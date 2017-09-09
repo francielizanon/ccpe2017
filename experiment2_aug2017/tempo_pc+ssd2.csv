@@ -1,0 +1,5 @@
+equipment;device;operation;reqsize;cache;repetition;dataamount;bandwidth;tempo
+PC;SSD2;write;4096;0;1;4370464768.0;213923840.0;20.43
+PC;SSD2;write;4096;0;2;4798283776.0;239781888.0;20.011
+PC;SSD2;write;4096;0;3;4571791360.0;228508672.0;20.007
+PC;SSD2;write;4096;0;4;4383047680.0;219118592.0;20.003

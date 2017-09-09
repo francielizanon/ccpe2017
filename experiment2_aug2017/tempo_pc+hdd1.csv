@@ -1,0 +1,5 @@
+equipment;device;operation;reqsize;cache;repetition;dataamount;bandwidth;tempo
+PC;HDD1;write;4096;0;1;499122176.0;24821760.0;20.108
+PC;HDD1;write;4096;0;2;717225984.0;35721216.0;20.078
+PC;HDD1;write;4096;0;3;738197504.0;36894720.0;20.008
+PC;HDD1;write;4096;0;4;805306368.0;40108032.0;20.078

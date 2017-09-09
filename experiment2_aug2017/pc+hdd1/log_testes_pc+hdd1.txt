@@ -1,0 +1,20 @@
+write_pc+hdd1_4mreq_semcache_4
+start
+Qua Ago 30 15:05:19 BRT 2017
+end
+Qua Ago 30 15:05:40 BRT 2017
+write_pc+hdd1_4mreq_semcache_2
+start
+Qua Ago 30 15:06:40 BRT 2017
+end
+Qua Ago 30 15:07:01 BRT 2017
+write_pc+hdd1_4mreq_semcache_1
+start
+Qua Ago 30 15:08:01 BRT 2017
+end
+Qua Ago 30 15:08:21 BRT 2017
+write_pc+hdd1_4mreq_semcache_3
+start
+Qua Ago 30 15:09:21 BRT 2017
+end
+Qua Ago 30 15:09:42 BRT 2017

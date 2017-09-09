@@ -1,0 +1,20 @@
+write_pc+ssd2_4mreq_semcache_3
+start
+Qua Ago 30 15:20:59 BRT 2017
+end
+Qua Ago 30 15:21:20 BRT 2017
+write_pc+ssd2_4mreq_semcache_2
+start
+Qua Ago 30 15:22:20 BRT 2017
+end
+Qua Ago 30 15:22:40 BRT 2017
+write_pc+ssd2_4mreq_semcache_4
+start
+Qua Ago 30 15:23:40 BRT 2017
+end
+Qua Ago 30 15:24:01 BRT 2017
+write_pc+ssd2_4mreq_semcache_1
+start
+Qua Ago 30 15:25:01 BRT 2017
+end
+Qua Ago 30 15:25:21 BRT 2017

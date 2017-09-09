@@ -1,0 +1,5 @@
+equipment;device;operation;reqsize;cache;repetition;dataamount;bandwidth;tempo
+CUBIE;SSD2;write;4096;0;1;708837376.0;35333120.0;20.061
+CUBIE;SSD2;write;4096;0;2;713031680.0;35514368.0;20.077
+CUBIE;SSD2;write;4096;0;3;713031680.0;35567616.0;20.047
+CUBIE;SSD2;write;4096;0;4;708837376.0;35402752.0;20.022

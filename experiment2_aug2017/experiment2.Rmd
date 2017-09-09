@@ -1,0 +1,47 @@
+---
+title: "experiment2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(ggplot2)
+```
+
+# Goal and method
+
+In this experiment, we wanted to see how much of the cpu and of the RAM memory are used during experiments, to try to understand why some of them demand more power than others.
+In order to do that, we've written a script that periodically collects this information with the top command and re-executed some of the initial experiments at the same time.
+
+# Results
+
+```{r}
+t1 <- read.csv("tempo_pc+hdd1.csv", sep=";", header=T)
+t2 <- read.csv("tempo_pc+ssd2.csv", sep=";", header=T)
+t3 <- read.csv("tempo_cubie+hdd1.csv", sep=";", header=T)
+t4 <- read.csv("tempo_cubie+ssd2.csv", sep=";", header=T) 
+
+tempo <- rbind(t1, t2, t3, t4)
+
+u1 <- read.csv("usage_pc+hdd1.csv", sep=";", header=T)
+u2 <- read.csv("usage_pc+ssd2.csv", sep=";", header=T)
+u3 <- read.csv("usage_cubie+hdd1.csv", sep=";", header=T)
+u4 <- read.csv("usage_cubie+ssd2.csv", sep=";", header=T)
+
+usage <- rbind(u1, u2, u3, u4)
+
+usage_df <- ddply(usage, c("equipment", "device", "operation", "reqsize", "cache", "repetition"), summarize, median_cpu = median(cpu), max_cpu = max(cpu), min_cpu =min(cpu), median_mem = median(mem), max_mem = max(mem), min_mem = min(mem))
+clean_usage_df <- ddply(usage_df, c("equipment", "device", "operation", "reqsize", "cache"), summarize, cpu = median(median_cpu), mem = median(median_mem))
+```
+
+
+```{r}
+ggplot(usage, aes(x = measurement, y = cpu, group = repetition, color = repetition)) + geom_line() + ylim(0,25)+ facet_wrap(~equipment + device);
+```
+
+Great, we are seeing what we've expected to see: in the pc we increase cpu usage when using the ssd (compared to using the hdd), in the cubie there is no such pattern. 
+
