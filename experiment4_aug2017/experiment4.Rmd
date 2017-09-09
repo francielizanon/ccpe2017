@@ -1,0 +1,144 @@
+---
+title: "experiment4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(ggplot2)
+```
+
+# Goal and method
+
+Considering different options to measure power demand during experiments, our first goal with this experiment was to see if ipmi could be a good option (when other sensors are not available). 
+
+These experiments were executed at the Federal University of Rio Grande do Sul, in the machine called Draco-1. Experiments with fio were executed while power demand was monitored both with ipmi and with an equipment called KillAWatt. 
+
+The second goal was to see if the increase in power demand observed when running I/O benchmarks (~15W in our experience) came from the RAM memory, the CPU, or another component. To check it, we used pcm with the benchmarks to monitor power demand at the cpu and at the DRAM. Comparing with output from ipmi and/or the sensor, we could have an idea of what components are demanding more power.
+
+# Results
+
+## First part - can we use ipmi?
+
+```{r}
+ipmi <- read.csv("parsed-ipmi.csv", sep=";", header=T)
+ipmi$timestamp <- as.POSIXlt(ipmi$timestamp)
+ipmi$source <- "IPMI"
+sensor <- read.csv("parsed-video.csv", sep=";", header=T)
+sensor$timestamp <- as.POSIXlt(sensor$timestamp)
+sensor$source <- "KillAWatt"
+
+df <- rbind(ipmi, sensor)
+```
+
+```{r}
+ggplot(df, aes(x = timestamp, y = power, color = source)) + geom_line();
+```
+
+My impression from this graph is that the ipmi measurement, even if we can collect every few (2~3) seconds, does not update that often, since it keeps giving the exact same measurement for a while. Both (ipmi and the sensor) start at the same power demand, which is probably the power in idle (static). We already know this sensor can update the measurement every second or so, because we have used it with success in the past. Therefore, the test begins and the killawatt immediately starts to show higher power demands. Only after almost a minute the ipmi measurement increases to the same level.
+I'm guessing we don't see the idle happening between tests because the script that collects the ipmi measurements is too active, so it gets in the way of the measurements.
+Therefore, it seems ipmi is not fit to our tasks, because it could only give power measurements at a low frequency, which is usually not what we want (it could be for longer tests). On the other hand, it seems both the sensor and the ipmi are fairly accurate, since they give similar results (or they are both equally wrong). 
+So no, we cannot use ipmi for these experiments. On the other hand, it can be used to give a general idea of power demand in idle/activity (which is what we need to answer our questions).
+
+## How much power does this system demands in activity?
+
+```{r}
+summary(sensor$power)
+summary(subset(sensor, power > 114)$power)
+```
+
+According to the sensor, in activity power demand is approximately 130W. As reported by IPMI, 126W.
+
+## Part 2 - where does the increase in power demand come from?
+
+Pcm measurements were collect every second, so the reported energy is the power demand as well.
+
+```{r}
+pcm <- read.csv("parsed-pcm.csv", sep=";", header=T)
+pcm$timestamp <- as.POSIXlt(pcm$timestamp)
+pcm$power_cpu <- pcm$processor_energy
+pcm$power_mem <- pcm$dram_energy
+```
+
+```{r}
+ggplot(pcm, aes(x = timestamp, y = power_cpu)) + geom_line() + ylim(0,50);
+```
+
+```{r}
+ggplot(pcm, aes(x = timestamp, y = power_mem)) + geom_line() + ylim(0,10);
+```
+
+```{r}
+summary(pcm)
+```
+
+
+Power demanded by the processor during the tests is of ~38W, power demanded by the memory is ~5W.
+
+Idle was obtained with 
+pcm 1 -csv=/home/jlbez/idle.csv -- sleep 60
+
+```{r}
+idle <- read.csv("parsed_idle.csv", sep=",", header=T)
+idle$timestamp <- paste(idle$Date, idle$Time)
+idle$timestamp <- as.POSIXlt(idle$timestamp)
+idle$cpu_power <- idle$Proc_Energy
+idle$mem_power <- idle$DRAM_Energy
+```
+
+```{r}
+ggplot(idle, aes(x = timestamp, y = cpu_power)) + geom_line()
+```
+
+```{r}
+ggplot(idle, aes(x = timestamp, y = mem_power)) + geom_line()
+```
+
+```{r}
+summary(idle$cpu_power)
+summary(idle$mem_power)
+```
+
+
+We have a weird peak that is the same for memory and cpu, something must have happened in that moment. But looking to the rest of it, cpu demands ~13W in idle, memory demands ~3W.
+
+This means 38 - 13 = 25W of change in the cpu, 5 - 3 = 2W in the memory. 
+
+The machine is monitored and IPMI measurements can be obtained from  http://gppd-landscape.cloudapp.net/ganglia/ . Looking at the power demand logged for the machine, we can see its power demand in idle is ~98W.
+
+This means the increse in power demand of the machine comparing idle to activity (using ipmi report for activity because idle report is also from ipmi) was of 126 - 98 = 28W.
+
+So from these 28W, 25W come from the processor, 2W come from the memory. The missing 1W is storage device, transfer buses, etc.
+Therefore, we have concluded most of the increase in power demand comes from the processor.
+
+## Idle with powersave
+
+I just repeated the experiment because the previous idle test was run with the performance governor, while the other tests were done with the powersave governor. Just to make sure everything holds, I will replot it :)
+
+```{r}
+idle_powersave <- read.csv("parsed_idle_powersave.csv", sep=",", header=T)
+idle_powersave$timestamp <- paste(idle_powersave$Date, idle_powersave$Time)
+idle_powersave$timestamp <- as.POSIXlt(idle_powersave$timestamp)
+idle_powersave$cpu_power <- idle_powersave$Proc_Energy
+idle_powersave$mem_power <- idle_powersave$DRAM_Energy
+```
+
+```{r}
+ggplot(idle_powersave, aes(x = timestamp, y = cpu_power)) + geom_line()
+```
+
+```{r}
+ggplot(idle_powersave, aes(x = timestamp, y = mem_power)) + geom_line()
+```
+
+```{r}
+summary(idle_powersave$cpu_power)
+summary(idle_powersave$mem_power)
+```
+
+
+
