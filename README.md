@@ -8,6 +8,10 @@ Federal University of Rio Grande do Sul (Brazil)
 Federal University of Santa Catarina (Brazil)
 Grenoble Alpes University (France)
 
+## Execution time and amount of data read/written for all experiments
+
+The tables with all these results can be seen in the file tables.pdf
+
 ## Summary
 
 ### Performance Results
