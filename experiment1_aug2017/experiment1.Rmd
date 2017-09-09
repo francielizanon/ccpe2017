@@ -1,0 +1,68 @@
+---
+title: "experiment1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(ggplot2)
+```
+
+
+# Goal and method
+
+After initial results comparing PC and CUBIE, we've observed that, in most situations, devices present lower performance when used in the CUBIE than in the PC. 
+
+This difference should not be explained by the SATA bus, because CUBIE has SATA II, which should reach up to 3Gb/s (or 384MB/s). We did not observe such high performance in the PC.
+Our goal in this experiment is to see if the memory RAM is the culprit of this difference.
+
+To check that, we've run the lmbench benchmark in both machines a few times, we look at memory read and write bandwidth.
+
+# Results 
+
+## Bandwidth 
+
+We first look at memory bandwidth, which is in MB/s. We'll combine multiple repetitions by taking median values. Size is in MB.
+
+```{r}
+bandwidth <- read.csv("bandwidth.csv", sep=";", header=T)
+bandwidth_df <- ddply(bandwidth, c("equipment", "operation", "size"), summarize, num = length(bandwidth), band = median(bandwidth))
+```
+
+```{r}
+ggplot(subset(bandwidth_df,equipment == "PC"), aes(x = size, y = band)) + geom_line() + ggtitle("PC") + facet_wrap(~equipment + operation);
+```
+
+```{r}
+ggplot(subset(bandwidth_df,equipment == "CUBIE"), aes(x = size, y = band)) + geom_line() + ggtitle("CUBIE") + facet_wrap(~equipment + operation);
+```
+
+Following the approach suggested by Laércio Pilla (Federal University of Santa Catarina), we take a size "in the middle" between the previous level in the memory hierarchy and the total memory size, because that's where benchmark results are expected to be stable and properly reflect that level's performance.
+For the PC, the L3 cache has 8MB (2^23), and the RAM memory has 16GB (2^34), so we take 2^28, 256MB.
+For the CUBIE, the L2 cache has 1MB (2^20), and the RAM memory has 2GB (2^31), so we take 2^25, 32MB.
+We dont have these exact sizes in the results, but we take the closest ones.
+We could as well take other values, since we can see by the graphs bandwidth is quite stable once it reaches the RAM memory (initial values are still being affected by the caches).
+
+```{r}
+subset(bandwidth_df, (equipment == "PC" & size == 268.44) | (equipment == "CUBIE" & size == 33.55))
+```
+
+So we have ~970MB/s for read and ~285MB/s for write in the CUBIE, and ~13GB/s for read and ~1GB/s for write in the PC.
+
+Although there is a huge difference in the performance of these RAM memories, we cannot blame them for the performance we've observed. ~285MB/s (write) in the CUBIE is far higher than the ~40MB/s we've observed.
+
+## Latency
+
+Read latency and combine different repetitions by taking medians. All values are in microseconds.
+
+```{r}
+latency <- read.csv("latency.csv", sep=";", header=T)
+latency_df <- ddply(latency, c("equipment"), summarize, num = length(simple_syscall), syscall = median(simple_syscall), read = median(simple_read), write = median(simple_write), stat = median(simple_stat), fstat = median(simple_fstat), open_close = median(simple_open_close))
+latency_df
+```
+
+We can see CUBIE has higher OS and file system latencies than the PC. Still, it is in the order of 1 or a few microseconds. A 32KB request to the HD will take at least ~0.0039s (considering 80MB/s) to an HDD or ~107 microseconds (considering 290MB/s) to an SSD. This means the latency is too small to make a difference here, it is not to blame for our results.
