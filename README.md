@@ -69,6 +69,35 @@ in tests without cache. All
 experiments with cache presented frequent peaks in power demand, but they did not increase the
 mean power enough to surpass the highest power of the tests with small requests without cache.
 
+## Energy Efficiency Results
+
+We have compared all tested configurations using the bytes per Joule energy efficiency metric, calculated dividing each test’s
+bandwidth (bytes/s) by its average power demand (Watts). 
+
+Using the cache
+led to higher energy efficiency in all experiments with small requests, and with large requests
+to HDD1 in the MPSoC and to both HDDs in the PC (up to 1737%). 
+
+Issuing large requests resulted in higher energy efficiency than small ones in all write
+experiments without cache, and when using cache in random write experiments: with HDDs, SSD2, and in
+the PC with SSD1 (up to 1277%). Issuing large read
+requests was more energy-efficient in most situations (up to 1256%). In most cases, these differences were due to higher performance.
+
+Higher energy efficiency was achieved in sequential write than in random write experiments
+when using HDDs (up to 1671%), because higher performance was achieved for sequential write to HDDs. Sequential reads obtained higher energy efficiency than random reads with HDDs (up to
+2836%) and issuing small requests to SSDs (up to 124%). These differences were caused by higher
+performance in the sequential read experiments.
+
+In all write experiments, using SSDs resulted in higher energy efficiency than using HDDs. SSDs provided higher energy efficiency than HDDs in all read experiments (up to 6658%), due to also providing higher performance.
+
+In all experiments SSDs provided higher energy efficiency when used in the PC (up to
+196%). This happened because performance is higher when they are used in the PC. Efficiency for read
+experiments with HDDs was higher in the MPSoC than in the PC (up to 166%), despite the fact
+that in many experiments performance was higher in the PC, because the lower power demand in
+the MPSoC compensated the bandwidth difference. 
+
+
+
 
 
 
