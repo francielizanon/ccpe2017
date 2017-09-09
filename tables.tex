@@ -1,0 +1,107 @@
+\documentclass{article}
+\usepackage{xspace}
+\usepackage{multirow}
+\usepackage{subfigure}
+\usepackage{xspace}
+\usepackage{xcolor}
+\usepackage{xargs}
+\usepackage[bottom]{footmisc}
+\usepackage[colorinlistoftodos,prependcaption,textsize=small]{todonotes}
+\usepackage[colorlinks,bookmarksopen,bookmarksnumbered,citecolor=black,urlcolor=black]{hyperref}
+\usepackage{booktabs}
+\newcommand{\pc}{PC\xspace}
+\newcommand{\cubie}{MPSoC\xspace}
+\begin{document}
+% new table pc
+\begin{table}[]
+    \centering
+    \footnotesize
+    \caption{Execution time and amount of data read/written for all experiments in the \pc}
+    \label{table:volume-time-pc}
+    \begin{tabular}{@{}cccrrrrrrrr@{}}
+        \toprule
+        \multicolumn{1}{l}{}                                                             
+                & \multicolumn{1}{l}{}                                            & \multicolumn{1}{l}{} & \multicolumn{2}{c}{\textbf{HDD1}}                                                                                                                                    & \multicolumn{2}{c}{\textbf{HDD2}}                                                                                                                                    & \multicolumn{2}{c}{\textbf{SSD1}}                                                                                                                                    & \multicolumn{2}{c}{\textbf{SSD2}}                                                                                                                                    \\
+        \cmidrule(l){4-11} 
+        \textbf{Operation}
+                & \textbf{\begin{tabular}[c]{@{}c@{}}Req.\\ Size\end{tabular}} & \textbf{Cache}       & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Data\\ (MB)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Time\\ (s)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Data\\ (MB)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Time\\ (s)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Data\\ (MB)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Time\\ (s)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Data\\ (MB)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Time\\ (s)\end{tabular}}} \\
+        \midrule
+        \multirow{2}{*}{\textbf{read}}         
+                & 32KB                  & No                   & 5060.20 & 60.01   & 2385.80  & 60.00   & 20480.00 & 49.91   & 15833.00  & 60.00  \\
+                                               
+                & 4MB                   & No                   & 5058.00 & 60.07   & 2388.00  & 60.05   & 20480.00 & 39.21   & 20480.00  & 44.35  \\
+        \midrule
+        
+        \multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}{\footnotesize random}\\ read\end{tabular}}}
+                & 32KB                 & No                   &  148.05 & 60.01   &  147.17  & 60.01   & 12013.50 & 60.00   &  6749.95  & 60.00  \\
+                                               
+                & 4MB                   & No                   & 1664.00 & 60.08   & 2032.00  & 60.07   & 20480.00 & 39.75   & 20480.00  & 43.25  \\
+        \midrule
+        \multirow{4}{*}{\textbf{write}}        
+                & \multirow{2}{*}{32KB}  & Yes                  & 7126.40 & 63.51   & 4643.95  & 66.75   & 18710.50 & 61.94   & 17244.50  & 61.88  \\
+                                               
+                &                       & No                   & 4979.95 & 60.00   & 2337.80  & 60.00   & 17421.00 & 60.00   & 15439.50  & 60.00  \\
+                                               
+                & \multirow{2}{*}{4MB}  & Yes                  & 7148.00 & 64.53   & 4686.00  & 66.75   & 18662.00 & 61.78   & 15164.00  & 60.99  \\
+                                               
+                &                       & No                   & 4972.00 & 60.04   & 2348.00  & 60.05   & 17288.00 & 60.01   & 13700.00  & 60.01  \\
+        \midrule
+        \multirow{4}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}{\footnotesize random}\\ write\end{tabular}}}
+                & \multirow{2}{*}{32KB}  & Yes                  & 4863.15 & 63.79   & 2936.00  & 67.39   & 19598.50 & 60.01   & 14378.00  & 63.03  \\
+                                               
+                &                       & No                   &  239.84 & 60.01   &  203.39  & 60.24   & 17406.50 & 60.00   & 11262.50  & 60.00  \\
+                                               
+                & \multirow{2}{*}{4MB}  & Yes                  & 5770.00 & 60.60   & 4502.00  & 62.19   & 18616.00 & 61.61   & 14646.00  & 60.49  \\
+                                               
+                &                       & No                   & 3262.00 & 60.07   & 1992.00  & 60.02   & 17420.00 & 60.01   & 14116.00  & 60.01  \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+
+% new table cubie
+\begin{table}[]
+    \centering
+    \footnotesize
+    \caption{Execution time and amount of data read/written for all experiments in the \cubie}
+    \label{table:volume-time-cubie}
+    \begin{tabular}{@{}cccrrrrrrrr@{}}
+        \toprule
+        \multicolumn{1}{l}{}                                                             
+                & \multicolumn{1}{l}{}                                            & \multicolumn{1}{l}{} & \multicolumn{2}{c}{\textbf{HDD1}}                                                                                                                                    & \multicolumn{2}{c}{\textbf{HDD2}}                                                                                                                                    & \multicolumn{2}{c}{\textbf{SSD1}}                                                                                                                                    & \multicolumn{2}{c}{\textbf{SSD2}}                                                                                                                                    \\
+        \cmidrule(l){4-11} 
+        \textbf{Operation}
+                & \textbf{\begin{tabular}[c]{@{}c@{}}Req.\\ Size\end{tabular}} & \textbf{Cache}       & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Data\\ (MB)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Time\\ (s)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Data\\ (MB)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Time\\ (s)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Data\\ (MB)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Time\\ (s)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Data\\ (MB)\end{tabular}}} & \multicolumn{1}{c}{\textbf{\begin{tabular}[c]{@{}c@{}}Time\\ (s)\end{tabular}}} \\
+        \midrule
+        \multirow{2}{*}{\textbf{read}}         
+                & 32KB                  & No                   & 2369.50 & 60.00   & 2386.35  & 60.00   & 3958.90 & 60.00   & 3538.05  & 60.00  \\
+                                               
+                & 4MB                   & No                   & 3030.00 & 60.03   & 2048.00  & 60.07   & 8082.00 & 60.01   & 8056.00  & 60.01  \\
+        \midrule
+        
+        \multirow{2}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}{\footnotesize random}\\ read\end{tabular}}}
+                & 32KB                  & No                   &  146.28 & 60.01   &  142.67  & 60.01   & 3207.10 & 60.00   & 2785.40  & 60.00  \\
+                                               
+                & 4MB                   & No                   & 1560.00 & 60.08   & 1892.00  & 60.07   & 8286.00 & 60.01   & 8058.00  & 60.01  \\
+        \midrule
+        \multirow{4}{*}{\textbf{write}}        
+                & \multirow{2}{*}{32KB}  & Yes                  & 2170.65 & 60.11   & 2273.90  & 60.11   & 2253.75 & 60.03   & 2266.70  & 60.07  \\
+                                               
+                &                       & No                   & 1420.85 & 60.00   & 1324.50  & 60.00   & 1537.50 & 60.00   & 1463.25  & 60.00  \\
+                                               
+                & \multirow{2}{*}{4MB}  & Yes                  & 2158.00 & 60.08   & 2256.00  & 60.05   & 2252.00 & 60.07   & 2242.00  & 60.06  \\
+                                               
+                &                       & No                   & 1756.00 & 60.06   & 2034.00  & 60.04   & 2036.00 & 60.05   & 2034.00  & 60.05  \\
+        \midrule
+        \multirow{4}{*}{\textbf{\begin{tabular}[c]{@{}c@{}}{\footnotesize random}\\ write\end{tabular}}}
+                & \multirow{2}{*}{32KB}  & Yes                  & 1320.05 & 60.12   &  382.73  & 60.11   & 2183.40 & 60.06   & 2177.50  & 60.07  \\
+                                               
+                &                       & No                   &  185.25 & 60.02   &  202.83  & 60.01   & 1498.00 & 60.00   & 1464.85  & 60.00  \\
+                                               
+                & \multirow{2}{*}{4MB}  & Yes                  & 1546.00 & 60.12   & 1908.00  & 60.06   & 2210.00 & 60.08   & 2200.00  & 60.13  \\
+                                               
+                &                       & No                   & 1344.00 & 60.08   & 1888.00  & 60.04   & 2064.00 & 60.06   & 2054.00  & 60.07  \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+\end{document}
