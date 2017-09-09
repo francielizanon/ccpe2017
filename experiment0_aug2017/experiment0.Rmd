@@ -1,0 +1,71 @@
+---
+title: "experiment0"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(ggplot2)
+```
+
+# Goal and Method
+
+We wanted to check our hypothesis that in some cases power demand differences were caused by the DVFS mechanism in place. In particular, our hypothesis is that shortest response times frm the storage device sometimes mean that case the DVFS governor could opt for higher frequencies, causing power demand to be higher.
+
+To check it, we re-executed some of the experiments while running a script that periodically collects the frequency of the cpus.
+
+# Results
+
+
+```{r}
+dvfs1 <- read.csv("dvfs_PC+HDD1.csv", sep=";", header=T)
+dvfs2 <- read.csv("dvfs_PC+SSD2.csv", sep=";", header=T)
+dvfs <- rbind(dvfs1, dvfs2)
+#combine all cpus into a single result
+dvfs$sum <- dvfs$freq0 + dvfs$freq1 + dvfs$freq2 + dvfs$freq3 + dvfs$freq4 + dvfs$freq5 + dvfs$freq6 + dvfs$freq7
+dvfs$sum <- dvfs$sum/2 
+
+#combine the measurements during each experiment by taking the median
+dvfs_df <- ddply(dvfs, c("equipment", "device", "operation", "reqsize", "cache", "repetition"), summarize, median = median(sum))
+
+#combine the repetitions of each experiment by taking the median
+clean_dvfs_df <- ddply(dvfs_df, c("equipment", "device", "operation", "reqsize", "cache"), summarize, sum = median(median))
+```
+
+## To investigate the difference in power demand - small vs large
+
+```{r}
+ggplot(dvfs, aes(x = measurement, y = sum, group = repetition, color = repetition)) + geom_line()  + facet_wrap(~device + operation + reqsize);
+```
+
+
+In the tests issuing small requests tp  HDDs we can see frequency does not start to fall until the end of the test, while when issuing large requests it changes a lot (often being way lower than the frequency maintained during the test with small requests). It seems to confirm our hypothesis!
+In the tests accessing SSDs there is not such a clear difference. SSDs performance is higher, so even large requests are fast. 
+
+## Performance of these tests
+
+```{r}
+time1 <- read.csv("tempo_PC+HDD1.csv", sep=";", header=T)
+time2 <- read.csv("tempo_PC+SSD2.csv", sep=";", header=T)
+time <- rbind(time1, time2)
+time$reqtime_4m <- (4*1024*1024)/time$bandwidth
+time$reqtime_32k <- (32*1024)/time$bandwidth
+summary(subset(time, device == "HDD1" & operation == "write" & reqsize == 4096)$reqtime_4m)
+summary(subset(time, device == "SSD2" & operation == "write" & reqsize == 4096)$reqtime_4m)
+summary(subset(time, device == "HDD1" & operation == "write" & reqsize == 32)$reqtime_32k)
+summary(subset(time, device == "SSD2" & operation == "write" & reqsize == 32)$reqtime_32k)
+summary(subset(time, device == "HDD1" & operation == "read" & reqsize == 4096)$reqtime_4m)
+summary(subset(time, device == "SSD2" & operation == "read" & reqsize == 4096)$reqtime_4m)
+summary(subset(time, device == "HDD1" & operation == "read" & reqsize == 32)$reqtime_32k)
+summary(subset(time, device == "SSD2" & operation == "read" & reqsize == 32)$reqtime_32k)
+
+```
+
+WRITE - A 4MB request takes ~138ms to be processed by the HDD and ~15ms to be processed by the SSD. Each 32KB request takes ~1ms in the HDD and ~0.1ms in the SSD.
+READ - A 4MB request takes ~15ms in the HDD and  ~6ms in the SSD. A 32KB request takes ~0.1ms in the HDD and ~0.1ms in the SSD.
+
+So even large requests to the SSD are faster than the small requests to the HDD. Apparently 15ms is enough to see that varying frequency effect, but 6ms is not.

@@ -1,0 +1,160 @@
+write_pc+ssd2_32kreq_semcache_1
+start
+Qua Ago 16 15:58:42 BRT 2017
+end
+Qua Ago 16 15:59:43 BRT 2017
+read_pc+ssd2_32kreq_semcache_1
+start
+Qua Ago 16 16:00:03 BRT 2017
+end
+Qua Ago 16 16:00:40 BRT 2017
+write_pc+ssd2_4mreq_semcache_8
+start
+Qua Ago 16 16:01:00 BRT 2017
+end
+Qua Ago 16 16:02:00 BRT 2017
+read_pc+ssd2_4mreq_semcache_8
+start
+Qua Ago 16 16:02:20 BRT 2017
+end
+Qua Ago 16 16:02:51 BRT 2017
+write_pc+ssd2_32kreq_semcache_5
+start
+Qua Ago 16 16:03:11 BRT 2017
+end
+Qua Ago 16 16:04:12 BRT 2017
+read_pc+ssd2_32kreq_semcache_5
+start
+Qua Ago 16 16:04:32 BRT 2017
+end
+Qua Ago 16 16:05:32 BRT 2017
+write_pc+ssd2_32kreq_semcache_6
+start
+Qua Ago 16 16:05:52 BRT 2017
+end
+Qua Ago 16 16:06:52 BRT 2017
+read_pc+ssd2_32kreq_semcache_6
+start
+Qua Ago 16 16:07:12 BRT 2017
+end
+Qua Ago 16 16:08:13 BRT 2017
+write_pc+ssd2_32kreq_semcache_3
+start
+Qua Ago 16 16:08:33 BRT 2017
+end
+Qua Ago 16 16:09:33 BRT 2017
+read_pc+ssd2_32kreq_semcache_3
+start
+Qua Ago 16 16:09:53 BRT 2017
+end
+Qua Ago 16 16:10:53 BRT 2017
+write_pc+ssd2_4mreq_semcache_6
+start
+Qua Ago 16 16:11:13 BRT 2017
+end
+Qua Ago 16 16:12:14 BRT 2017
+read_pc+ssd2_4mreq_semcache_6
+start
+Qua Ago 16 16:12:34 BRT 2017
+end
+Qua Ago 16 16:13:08 BRT 2017
+write_pc+ssd2_4mreq_semcache_2
+start
+Qua Ago 16 16:13:28 BRT 2017
+end
+Qua Ago 16 16:14:28 BRT 2017
+read_pc+ssd2_4mreq_semcache_2
+start
+Qua Ago 16 16:14:48 BRT 2017
+end
+Qua Ago 16 16:15:22 BRT 2017
+write_pc+ssd2_32kreq_semcache_4
+start
+Qua Ago 16 16:15:42 BRT 2017
+end
+Qua Ago 16 16:16:42 BRT 2017
+read_pc+ssd2_32kreq_semcache_4
+start
+Qua Ago 16 16:17:02 BRT 2017
+end
+Qua Ago 16 16:18:03 BRT 2017
+write_pc+ssd2_4mreq_semcache_3
+start
+Qua Ago 16 16:18:23 BRT 2017
+end
+Qua Ago 16 16:19:23 BRT 2017
+read_pc+ssd2_4mreq_semcache_3
+start
+Qua Ago 16 16:19:43 BRT 2017
+end
+Qua Ago 16 16:20:17 BRT 2017
+write_pc+ssd2_4mreq_semcache_4
+start
+Qua Ago 16 16:20:37 BRT 2017
+end
+Qua Ago 16 16:21:37 BRT 2017
+read_pc+ssd2_4mreq_semcache_4
+start
+Qua Ago 16 16:21:57 BRT 2017
+end
+Qua Ago 16 16:22:31 BRT 2017
+write_pc+ssd2_4mreq_semcache_5
+start
+Qua Ago 16 16:22:51 BRT 2017
+end
+Qua Ago 16 16:23:52 BRT 2017
+read_pc+ssd2_4mreq_semcache_5
+start
+Qua Ago 16 16:24:12 BRT 2017
+end
+Qua Ago 16 16:24:46 BRT 2017
+write_pc+ssd2_4mreq_semcache_1
+start
+Qua Ago 16 16:25:06 BRT 2017
+end
+Qua Ago 16 16:26:06 BRT 2017
+read_pc+ssd2_4mreq_semcache_1
+start
+Qua Ago 16 16:26:26 BRT 2017
+end
+Qua Ago 16 16:27:00 BRT 2017
+write_pc+ssd2_32kreq_semcache_2
+start
+Qua Ago 16 16:27:20 BRT 2017
+end
+Qua Ago 16 16:28:20 BRT 2017
+read_pc+ssd2_32kreq_semcache_2
+start
+Qua Ago 16 16:28:40 BRT 2017
+end
+Qua Ago 16 16:29:41 BRT 2017
+write_pc+ssd2_32kreq_semcache_7
+start
+Qua Ago 16 16:30:01 BRT 2017
+end
+Qua Ago 16 16:31:01 BRT 2017
+read_pc+ssd2_32kreq_semcache_7
+start
+Qua Ago 16 16:31:21 BRT 2017
+end
+Qua Ago 16 16:32:21 BRT 2017
+write_pc+ssd2_4mreq_semcache_7
+start
+Qua Ago 16 16:32:41 BRT 2017
+end
+Qua Ago 16 16:33:42 BRT 2017
+read_pc+ssd2_4mreq_semcache_7
+start
+Qua Ago 16 16:34:02 BRT 2017
+end
+Qua Ago 16 16:34:36 BRT 2017
+write_pc+ssd2_32kreq_semcache_8
+start
+Qua Ago 16 16:34:56 BRT 2017
+end
+Qua Ago 16 16:35:56 BRT 2017
+read_pc+ssd2_32kreq_semcache_8
+start
+Qua Ago 16 16:36:16 BRT 2017
+end
+Qua Ago 16 16:37:17 BRT 2017
