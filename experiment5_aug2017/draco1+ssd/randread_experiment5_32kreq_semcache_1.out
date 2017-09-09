@@ -1,0 +1,29 @@
+fioccpe: (g=0): rw=randread, bs=32K-32K/32K-32K/32K-32K, ioengine=sync, iodepth=1
+fio-2.2.10
+Starting 1 process
+
+fioccpe: (groupid=0, jobs=1): err= 0: pid=37044: Sat Sep  2 23:23:02 2017
+  read : io=8418.5MB, bw=143672KB/s, iops=4489, runt= 60001msec
+    clat (usec): min=187, max=18236, avg=219.98, stdev=134.53
+     lat (usec): min=188, max=18237, avg=220.21, stdev=134.54
+    clat percentiles (usec):
+     |  1.00th=[  193],  5.00th=[  199], 10.00th=[  203], 20.00th=[  209],
+     | 30.00th=[  213], 40.00th=[  217], 50.00th=[  219], 60.00th=[  221],
+     | 70.00th=[  225], 80.00th=[  227], 90.00th=[  237], 95.00th=[  241],
+     | 99.00th=[  247], 99.50th=[  247], 99.90th=[  255], 99.95th=[  270],
+     | 99.99th=[ 3728]
+    bw (KB  /s): min=130752, max=148544, per=100.00%, avg=143682.69, stdev=5310.17
+    lat (usec) : 250=99.81%, 500=0.17%, 1000=0.01%
+    lat (msec) : 2=0.01%, 4=0.01%, 10=0.01%, 20=0.01%
+  cpu          : usr=1.84%, sys=7.17%, ctx=269394, majf=0, minf=16
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued    : total=r=269389/w=0/d=0, short=r=0/w=0/d=0, drop=r=0/w=0/d=0
+     latency   : target=0, window=0, percentile=100.00%, depth=1
+
+Run status group 0 (all jobs):
+   READ: io=8418.5MB, aggrb=143671KB/s, minb=143671KB/s, maxb=143671KB/s, mint=60001msec, maxt=60001msec
+
+Disk stats (read/write):
+  sdb: ios=269039/3, merge=0/1, ticks=55612/0, in_queue=55536, util=92.56%

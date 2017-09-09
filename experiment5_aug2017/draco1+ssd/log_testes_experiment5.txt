@@ -1,0 +1,120 @@
+write_experiment5_32kreq_comcache_4
+start
+Sáb Set  2 22:58:51 BRT 2017
+end
+Sáb Set  2 22:59:25 BRT 2017
+randwrite_experiment5_32kreq_comcache_4
+start
+Sáb Set  2 23:00:16 BRT 2017
+end
+Sáb Set  2 23:00:55 BRT 2017
+write_experiment5_32kreq_semcache_2
+start
+Sáb Set  2 23:01:48 BRT 2017
+end
+Sáb Set  2 23:02:49 BRT 2017
+read_experiment5_32kreq_semcache_2
+start
+Sáb Set  2 23:03:09 BRT 2017
+end
+Sáb Set  2 23:03:56 BRT 2017
+randwrite_experiment5_32kreq_semcache_2
+start
+Sáb Set  2 23:04:16 BRT 2017
+end
+Sáb Set  2 23:05:17 BRT 2017
+randread_experiment5_32kreq_semcache_2
+start
+Sáb Set  2 23:05:37 BRT 2017
+end
+Sáb Set  2 23:06:37 BRT 2017
+write_experiment5_32kreq_comcache_2
+start
+Sáb Set  2 23:06:57 BRT 2017
+end
+Sáb Set  2 23:07:33 BRT 2017
+randwrite_experiment5_32kreq_comcache_2
+start
+Sáb Set  2 23:08:26 BRT 2017
+end
+Sáb Set  2 23:09:05 BRT 2017
+write_experiment5_32kreq_comcache_3
+start
+Sáb Set  2 23:09:58 BRT 2017
+end
+Sáb Set  2 23:10:38 BRT 2017
+randwrite_experiment5_32kreq_comcache_3
+start
+Sáb Set  2 23:11:31 BRT 2017
+end
+Sáb Set  2 23:12:10 BRT 2017
+write_experiment5_32kreq_semcache_3
+start
+Sáb Set  2 23:13:04 BRT 2017
+end
+Sáb Set  2 23:14:04 BRT 2017
+read_experiment5_32kreq_semcache_3
+start
+Sáb Set  2 23:14:24 BRT 2017
+end
+Sáb Set  2 23:15:12 BRT 2017
+randwrite_experiment5_32kreq_semcache_3
+start
+Sáb Set  2 23:15:32 BRT 2017
+end
+Sáb Set  2 23:16:32 BRT 2017
+randread_experiment5_32kreq_semcache_3
+start
+Sáb Set  2 23:16:52 BRT 2017
+end
+Sáb Set  2 23:17:53 BRT 2017
+write_experiment5_32kreq_semcache_1
+start
+Sáb Set  2 23:18:13 BRT 2017
+end
+Sáb Set  2 23:19:14 BRT 2017
+read_experiment5_32kreq_semcache_1
+start
+Sáb Set  2 23:19:34 BRT 2017
+end
+Sáb Set  2 23:20:21 BRT 2017
+randwrite_experiment5_32kreq_semcache_1
+start
+Sáb Set  2 23:20:41 BRT 2017
+end
+Sáb Set  2 23:21:42 BRT 2017
+randread_experiment5_32kreq_semcache_1
+start
+Sáb Set  2 23:22:02 BRT 2017
+end
+Sáb Set  2 23:23:02 BRT 2017
+write_experiment5_32kreq_comcache_1
+start
+Sáb Set  2 23:23:22 BRT 2017
+end
+Sáb Set  2 23:23:58 BRT 2017
+randwrite_experiment5_32kreq_comcache_1
+start
+Sáb Set  2 23:24:51 BRT 2017
+end
+Sáb Set  2 23:25:30 BRT 2017
+write_experiment5_32kreq_semcache_4
+start
+Sáb Set  2 23:26:23 BRT 2017
+end
+Sáb Set  2 23:27:24 BRT 2017
+read_experiment5_32kreq_semcache_4
+start
+Sáb Set  2 23:27:44 BRT 2017
+end
+Sáb Set  2 23:28:32 BRT 2017
+randwrite_experiment5_32kreq_semcache_4
+start
+Sáb Set  2 23:28:52 BRT 2017
+end
+Sáb Set  2 23:29:52 BRT 2017
+randread_experiment5_32kreq_semcache_4
+start
+Sáb Set  2 23:30:12 BRT 2017
+end
+Sáb Set  2 23:31:13 BRT 2017

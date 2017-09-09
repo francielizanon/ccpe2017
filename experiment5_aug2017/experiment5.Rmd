@@ -1,0 +1,174 @@
+---
+title: "experiment5"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(plyr)
+library(ggplot2)
+```
+
+# Goal and method
+
+We wanted to see how power demand by experiments compared when eliminating the DVFS effects. So we repeated some of them disabling DVFS (setting the frequency to the maximum). We were not able to do that in the PC from other experiments, so we've used the draco-1 machine from the Federal University of Rio Grande do Sul. In order to compare results, we repeated those experiments with DVFS in draco-1 as well.
+
+The choice of using draco-1 was also so that we could use PCM to see if differences were coming from the cpu or from the memory. Draco-1 uses an SSD.
+
+
+# Results
+
+
+```{r}
+pcm1 <- read.csv("parsed_pcm_output_original.csv", sep=";", header=T)
+pcm2 <- read.csv("parsed_pcm_output_powersave.csv", sep=";", header=T)
+pcm1$DVFS <- "off"
+pcm2$DVFS <- "on"
+pcm <- rbind(pcm1,pcm2)
+```
+
+## General behavior compared to the PC
+
+In the PC from the original experiments, with SSDs, writing demanded more power than reading in some experiments with small requests - random operations in SSD1 and sequential and random in SSD2.
+
+
+```{r}
+pcm$power <- pcm$power_ram + pcm$power_cpu
+
+pcm_clean <- ddply(pcm, c("DVFS","operation", "cache", "repetition"), summarize, power_mean = mean(power))
+pcm_clean <- ddply(pcm_clean, c("DVFS","operation", "cache"), summarize, power = median(power_mean))
+ggplot(pcm_clean, aes(x = interaction(operation,cache), y= power)) + geom_bar(stat="identity") + geom_text(aes(y = power + 5, label = sprintf("%.1f", power))) + facet_wrap(~DVFS)
+```
+
+We see writing demanding more power than reading in the experiments with DVFS (the ones we can compare to the original experiments).
+
+```{r}
+wilcox.test(subset(pcm, DVFS=="on" & operation == "read" & cache == 0)$power, subset(pcm, DVFS=="on" & operation == "write" & cache == 0)$power)
+wilcox.test(subset(pcm, DVFS=="on" & operation == "randread" & cache == 0)$power, subset(pcm, DVFS == "on" & operation == "randwrite" & cache == 0)$power)
+```
+
+They are significantly different too. The difference is 5% for random and 3% for sequential, lower than observed in the PC.
+
+In the PC with SSDs, sequential read demanded more power than random read with small requests, and sequential write demanded more power than random write with small requests without cache (SSD1). Random write demanded more power than sequential write with small requests using the cache.
+
+Here we see very small differences for sequential vs random (randwrite > write, read > randread).
+The situation random > seq in the PC was when performance in random test was higher than performance in the sequential. Here sequential performance was higher than rando performance, but for write without cache it was almost the same.
+
+```{r}
+wilcox.test(subset(pcm, DVFS=="on" & operation == "read" & cache == 0)$power, subset(pcm, DVFS=="on" & operation == "randread" & cache == 0)$power)
+wilcox.test(subset(pcm, DVFS=="on" & operation == "randwrite" & cache == 0)$power, subset(pcm, DVFS == "on" & operation == "write" & cache == 0)$power)
+wilcox.test(subset(pcm, DVFS=="on" & operation == "randwrite" & cache == 1)$power, subset(pcm, DVFS == "on" & operation == "write" & cache == 1)$power)
+```
+
+Only read vs randread is significantly different (but values are very close).
+
+In the PC with SSDs, not using the cache demanded more power  with small requests in all sequential write, and with sSD2 in random write.
+Here we see small differences, but using the cache increasing power demand, so the opposite.
+
+```{r}
+wilcox.test(subset(pcm, DVFS=="on" & operation == "write" & cache == 0)$power, subset(pcm, DVFS=="on" & operation == "write" & cache == 1)$power)
+wilcox.test(subset(pcm, DVFS=="on" & operation == "randwrite" & cache == 0)$power, subset(pcm, DVFS == "on" & operation == "randwrite" & cache == 1)$power)
+```
+
+But they are not significantly different.
+
+## What happens when we remove DVFS from the equation
+
+```{r}
+pcm$power <- pcm$power_ram + pcm$power_cpu
+
+pcm_clean <- ddply(pcm, c("DVFS","operation", "cache", "repetition"), summarize, power_mean = mean(power), power_mean_cpu = mean(power_cpu), power_mean_ram = mean(power_ram))
+pcm_clean <- ddply(pcm_clean, c("DVFS","operation", "cache"), summarize, power = median(power_mean), power_cpu = median(power_mean_cpu), power_ram = median(power_mean_ram))
+ggplot(pcm_clean, aes(x = interaction(operation,cache), y= power)) + geom_bar(stat="identity") + geom_text(aes(y = power + 5, label = sprintf("%.1f", power))) + facet_wrap(~DVFS)
+```
+
+We still see the difference between randwrite and randread, but between read and write it seems to be the opposite now: read > write.
+
+```{r}
+wilcox.test(subset(pcm, DVFS=="off" & operation == "randwrite" & cache == 0)$power, subset(pcm, DVFS=="off" & operation == "randread" & cache == 0)$power)
+wilcox.test(subset(pcm, DVFS=="off" & operation == "write" & cache == 0)$power, subset(pcm, DVFS == "off" & operation == "read" & cache == 0)$power)
+```
+
+Both differences were confirmed by the test. 
+
+We still have randwrite > write, read > randread, and differences seem highlighted without dvfs. Random write performance was higher than sequential write without cache.
+
+```{r}
+wilcox.test(subset(pcm, DVFS=="off" & operation == "randwrite" & cache == 0)$power, subset(pcm, DVFS=="off" & operation == "write" & cache == 0)$power)
+wilcox.test(subset(pcm, DVFS=="off" & operation == "randread" & cache == 0)$power, subset(pcm, DVFS == "off" & operation == "read" & cache == 0)$power)
+wilcox.test(subset(pcm, DVFS=="off" & operation == "randwrite" & cache == 1)$power, subset(pcm, DVFS=="off" & operation == "write" & cache == 1)$power)
+```
+
+Only significantly different for experiments without cache.
+
+Using the cache used to increase power demand (with DVFS), but now it seems to be the opposite
+
+```{r}
+wilcox.test(subset(pcm, DVFS=="off" & operation == "write" & cache == 0)$power, subset(pcm, DVFS=="off" & operation == "write" & cache == 1)$power)
+wilcox.test(subset(pcm, DVFS=="off" & operation == "randwrite" & cache == 0)$power, subset(pcm, DVFS == "off" & operation == "randwrite" & cache == 1)$power)
+```
+
+And these differences are significant.
+
+## performance results
+
+```{r}
+time1 <- read.csv("tempo_draco1+ssd.csv", sep=";", header=T)
+time2 <- read.csv("tempo_draco1-powersave+ssd.csv", sep=";", header=T)
+time1$DVFS <- "off"
+time2$DVFS <- "on"
+time <- rbind(time1, time2)
+time$bandwidth<- time$bandwidth/1024
+time$bandwidth<- time$bandwidth/1024
+clean_time <- ddply(time, c("DVFS", "operation", "cache"), summarize, perf <- median(bandwidth))
+```
+
+
+## read vs write
+
+```{r}
+ggplot(subset(pcm, cache == 0), aes(x = measurement, y = power_cpu, group = repetition, color = repetition)) + geom_line() + facet_wrap(~DVFS + operation,ncol=4)
+```
+
+The differences come from the cpu. Disabling the CPU changes the behavior for sequential (read > write now), but differences continue to be the same (2W in random tests and 1W in sequential)
+
+A 32KB request takes, without DVFS, maximum is  randread 0.2ms, maximum is read 0.07ms. According to experimento0, that is not long enough for us to see impact from DVFS.
+
+The differences in the original test were of ~2W for random in SSD1, 4W for random in SS2, no difference for sequential in SSD1, and 2W for sequential in SSD2
+
+## sequential vs random
+
+Looking at power demand by the cpu, it looks like it is higher during sequential read than random read. 
+
+## using or not the cache
+
+In tests with DVFS, there was no signficant difference between cache and no cache, but disabling DVFS not using the cache demands more power.
+
+In both situations performance was increased using the cache (a lot).
+
+With DVFS, cpu power has a peak at the beginning of the test (compared to not using the cache), and then it drops to a lower value. Removing DVFS, it does not have the peak and it is lower than not using the cache.
+With DVFS power demanded by the RAM is higher than not using the cache, and it has a peak in the beginning. Disabling DVFS the peak is a litle lower, but it continues to be higher than not using the cache.
+
+## Effect in the cpu
+
+
+```{r}
+ggplot(subset(pcm, DVFS == "on" & (operation != "read" & operation != "randread")), aes(x = measurement, y = power_cpu, group = repetition, color = repetition)) + geom_line() + facet_wrap(~cache + operation, ncol=4)
+```
+
+```{r}
+ggplot(subset(pcm, DVFS == "off" & (operation != "read" & operation != "randread")), aes(x = measurement, y = power_cpu, group = repetition, color = repetition)) + geom_line() + facet_wrap(~cache + operation, ncol=4)
+```
+
+## Effect in the RAM memory
+
+```{r}
+ggplot(subset(pcm, DVFS == "on" & (operation != "read" & operation != "randread")), aes(x = measurement, y = power_ram, group = repetition, color = repetition)) + geom_line() + facet_wrap(~cache + operation, ncol=4)
+```
+
+```{r}
+ggplot(subset(pcm, DVFS == "off" & (operation != "read" & operation != "randread")), aes(x = measurement, y = power_ram, group = repetition, color = repetition)) + geom_line() + facet_wrap(~cache + operation, ncol=4)
+```
