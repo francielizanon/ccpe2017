@@ -1,0 +1,3103 @@
+---
+title: "analysis"
+date: "February 2017"
+output: html_document
+---
+
+#Time results
+
+Read data
+
+```{r}
+PC_HDD1 <- read.csv("csv/tempo_PC+HDD1.csv", header=T, sep= ";")
+PC_HDD1$device = "HDD1"
+PC_HDD2 <- read.csv("csv/tempo_PC+HDD2.csv", header=T, sep= ";")
+PC_SSD1 <- read.csv("csv/tempo_PC+SSD1.csv", header=T, sep= ";")
+PC_SSD2 <- read.csv("csv/tempo_PC+SSD2.csv", header=T, sep= ";")
+
+CUBIE_HDD1 <- read.csv("csv/tempo_CUBIE+HDD1.csv", header=T, sep= ";")
+CUBIE_HDD2 <- read.csv("csv/tempo_CUBIE+HDD2.csv", header=T, sep= ";")
+CUBIE_HDD2$equipment = "CUBIE"
+CUBIE_SSD1 <- read.csv("csv/tempo_CUBIE+SSD1.csv", header=T, sep= ";")
+CUBIE_SSD2 <- read.csv("csv/tempo_CUBIE+SSD2.csv", header=T, sep= ";")
+
+df <- rbind(PC_HDD1, PC_HDD2, PC_SSD1, PC_SSD2, CUBIE_HDD1, CUBIE_HDD2, CUBIE_SSD1, CUBIE_SSD2)
+```
+
+## Sanity checks
+
+Are all datasets identified by the right machine and device?
+
+```{r}
+subset(PC_HDD1, equipment != "PC" | device != "HDD1")
+subset(PC_HDD2, equipment != "PC" | device != "HDD2")
+subset(PC_SSD1, equipment != "PC" | device != "SSD1")
+subset(PC_SSD2, equipment != "PC" | device != "SSD2")
+
+subset(CUBIE_HDD1, equipment != "CUBIE" | device != "HDD1")
+subset(CUBIE_HDD2, equipment != "CUBIE" | device != "HDD2")
+subset(CUBIE_SSD1, equipment != "CUBIE" | device != "SSD1")
+subset(CUBIE_SSD2, equipment != "CUBIE" | device != "SSD2")
+```
+
+(we had a problem with HDD1, which was identified as "HHD1", and with CUBIE_HDD2, where equipment was "cubie" instead of "CUBIE". It was corrected above, when reading it)
+
+Do all tests have all the measurements?
+
+```{r}
+summary(df)
+```
+
+it looks so, since all devices and equipments face the same number of entries 
+
+
+Do all fields have the expected values?
+```{r}
+subset(df, reqsize != 32 & reqsize != 4096)
+subset(df, cache != 0 & cache != 1)
+```
+
+Tests are supposed to take around 60 seconds.
+
+```{r}
+length(subset(df, tempo < 50)$tempo)
+min(df$tempo)
+```
+
+81 tests took less than 50 seconds. The fastest one took almost 37 seconds. It is not ideal, but it is not a deal breaker, as long as we have enough to obtain energy measurements
+
+is data amount / time = bandwidth?
+
+```{r}
+subset(df, (dataamount / tempo) > (bandwidth*1.01) | (dataamount / tempo) < (bandwidth*0.99))
+```
+
+A small difference is expected, for precision and conversion problems, but it is not something over 1%, so it is fine!
+
+
+## Descriptive analysis
+
+```{r}
+summary(PC_HDD1)
+summary(PC_HDD2)
+summary(PC_SSD1)
+summary(PC_SSD2)
+
+summary(CUBIE_HDD1)
+summary(CUBIE_HDD2)
+summary(CUBIE_SSD1)
+summary(CUBIE_SSD2)
+```
+
+
+# Energy results
+
+Read data
+
+```{r}
+Energy_PC_HDD1 <- read.csv("csv/energia_PC+HDD1.csv", header=T, sep=";")
+Energy_PC_HDD1$device = "HDD1"
+Energy_PC_HDD1 <- Energy_PC_HDD1[-c(13361), ]
+Energy_PC_HDD2 <- read.csv("csv/energia_PC+HDD2.csv", header=T, sep=";")
+Energy_PC_HDD2 <- Energy_PC_HDD2[-c(5923), ]
+Energy_PC_SSD1 <- read.csv("csv/energia_PC+SSD1.csv", header=T, sep=";")
+Energy_PC_SSD2 <- read.csv("csv/energia_PC+SSD2.csv", header=T, sep=";")
+
+Energy_CUBIE_HDD1 <- read.csv("csv/energia_CUBIE+HDD1.csv", header=T, sep=";")
+Energy_CUBIE_HDD2 <- read.csv("csv/energia_CUBIE+HDD2.csv", header=T, sep=";")
+Energy_CUBIE_HDD2 <- Energy_CUBIE_HDD2[-c(2951, 5207,7430), ]
+Energy_CUBIE_SSD1 <- read.csv("csv/energia_CUBIE+SSD1.csv", header=T, sep=";")
+Energy_CUBIE_SSD1 <- Energy_CUBIE_SSD1[-c(102, 12313), ]
+Energy_CUBIE_SSD2 <- read.csv("csv/energia_CUBIE+SSD2.csv", header=T, sep=";")
+Energy_CUBIE_SSD2 <- Energy_CUBIE_SSD2[-c(2752, 11189, 18734), ]
+
+
+energy_df <- rbind(Energy_PC_HDD1, Energy_PC_HDD2, Energy_PC_SSD1, Energy_PC_SSD2, Energy_CUBIE_HDD1, Energy_CUBIE_HDD2, Energy_CUBIE_SSD1, Energy_CUBIE_SSD2)
+energy_df$operation <- as.character(energy_df$operation)
+```
+
+in order to convert rms to our metrics, we'll need the baseline rms that was measured separately
+```{r}
+baseline <- read.csv("csv/rms3_baseline.csv", header=T, sep=";")
+summary(baseline)
+```
+
+Seems quite stable, we'll use the median (2.472) as our baseline
+
+calculations to convert rms to our values of interest (given by specs)
+
+```{r}
+energy_df$voltage_pc = energy_df$rms1*500
+energy_df$current_pc = energy_df$rms2/5
+energy_df$current_device = (energy_df$rms3-median(baseline$rms3))/0.66 
+energy_df$power_pc = energy_df$voltage_pc * energy_df$current_pc
+energy_df$power_device = energy_df$current_device * 5  
+
+equipments=c("PC", "CUBIE")
+devices=c("HDD1", "HDD2", "SSD1", "SSD2")
+reqsizes = c(32, 4096)
+caches= c(0,1)
+
+library(ggplot2)
+
+library(plyr)
+clean_energy_df <- ddply(subset(energy_df, operation != "idle"), c("equipment", "device", "operation", "reqsize", "cache", "repetition"), summarize, num = length(measurement), power = mean(power_pc), median_power = median(power_pc), power_device = mean(power_device), median_power_device = median(power_device))
+```
+
+
+## Sanity checks
+
+Are all datasets identified by the right machine and device?
+
+```{r}
+subset(Energy_PC_HDD1, equipment != "PC" | device != "HDD1")
+subset(Energy_PC_HDD2, equipment != "PC" | device != "HDD2")
+subset(Energy_PC_SSD1, equipment != "PC" | device != "SSD1")
+subset(Energy_PC_SSD2, equipment != "PC" | device != "SSD2")
+
+subset(Energy_CUBIE_HDD1, equipment != "CUBIE" | device != "HDD1")
+subset(Energy_CUBIE_HDD2, equipment != "CUBIE" | device != "HDD2")
+subset(Energy_CUBIE_SSD1, equipment != "CUBIE" | device != "SSD1")
+subset(Energy_CUBIE_SSD2, equipment != "CUBIE" | device != "SSD2")
+```
+
+(we had a problem with HDD1, which was identified as "HHD1". It was corrected above, when reading it)
+
+
+are all values positive?
+```{r}
+subset(energy_df, current_device < 0)
+subset(energy_df, current_pc < 0)
+subset(energy_df, voltage_pc < 0)
+```
+
+ok
+
+Do all fields have the expected values?
+```{r}
+subset(energy_df, reqsize != 32 & reqsize != 4096 & operation != "idle")
+
+subset(energy_df, cache != 0 & cache != 1)
+```
+
+yes
+
+does power make sense?
+
+```{r}
+summary(subset(energy_df, equipment == "PC"))
+summary(subset(energy_df, equipment == "CUBIE"))
+```
+
+we had some anomalous results, they were removed above, when reading the dataframes
+
+We had three measurements with problems in rms2:
+      equipment device operation reqsize cache repetition measurement   rms1    rms2  rms3 voltage_pc current_pc current_device    power_pc power_device
+13361        PC   HDD1      read    4096     0          3          44 0.4351 9.9e+37 2.548     217.55   1.98e+37      0.1181818 4.30749e+39        
+107035     CUBIE   SSD1      read    4096     1          9          88 0.4468 9.9e+37 2.521      223.4   1.98e+37     0.07727273 4.42332e+39
+116855     CUBIE   SSD2 randwrite    4096     1          9          81 0.4382 9.9e+37 2.530      219.1   1.98e+37     0.09090909 4.33818e+39
+125292     CUBIE   SSD2     write    4096     1         10          38 0.4350 9.9e+37 2.529      217.5   1.98e+37     0.08939394 4.30650e+39
+132837     CUBIE   SSD2 randwrite    4096     0          5          77 0.4380 9.9e+37 2.530      219.0   1.98e+37     0.09090909 4.33620e+39
+
+and two in rms3:
+      equipment device operation reqsize cache repetition measurement   rms1   rms2    rms3 voltage_pc current_pc current_device power_pc power_device
+25481        PC   HDD2  randread      32     1          9          84 0.4417 0.9100 9.9e+37     220.85    0.18200        1.5e+38 40.19470      7.5e+38
+94824     CUBIE   SSD1     write      32     0          8         101 0.4459 0.2704 9.9e+37     222.95    0.05408        1.5e+38 12.05714      7.5e+38
+
+They all report 9.9e+37, which is probably the highest value possible. It is clearly a bug. They are all from different tests, and removing a single measurement will not cause problems. We can just remove them. But notice this requires knowing the faulty row numbers, which will change when we add the missing measurements (and every time we change results). So this portion of code will always have to be adjusted, unless we add a filter in our parsing script.
+
+do we have tests with no measurement?
+
+```{r}
+summary(clean_energy_df)
+min(clean_energy_df$num)
+```
+
+ok, the smallest one has 74 measurements, we're fine
+
+does the number of measurements make sense with the duration of the tests?
+
+```{r}
+clean_energy_df$time = 0
+for(i in 1:length(clean_energy_df$num))
+{
+  this_subset = subset(df, equipment == clean_energy_df$equipment[i] &
+                           device == clean_energy_df$device[i] &
+                           operation == clean_energy_df$operation[i] &
+                           reqsize == clean_energy_df$reqsize[i] &
+                           cache == clean_energy_df$cache[i] &
+                           repetition == clean_energy_df$repetition[i])
+  clean_energy_df$time[i] = this_subset$tempo
+}
+subset(clean_energy_df, (num/2) > (time*1.075) | (num/2) < (time*0.925))
+```
+
+We have a 7.5% margin (maximum difference between execution time and number of measurements divided by two), so it looks fine
+
+## Descriptive analysis
+
+```{r}
+summary(subset(energy_df, equipment == "PC" & device == "HDD1"))
+summary(subset(energy_df, equipment == "PC" & device == "HDD2"))
+summary(subset(energy_df, equipment == "PC" & device == "SSD1"))
+summary(subset(energy_df, equipment == "PC" & device == "SSD2"))
+
+summary(subset(energy_df, equipment == "CUBIE" & device == "HDD1"))
+summary(subset(energy_df, equipment == "CUBIE" & device == "HDD2"))
+summary(subset(energy_df, equipment == "CUBIE" & device == "SSD1"))
+summary(subset(energy_df, equipment == "CUBIE" & device == "SSD2"))
+```
+
+# power in idle
+
+```{r}
+library(ggplot2)
+
+this_df <- subset(energy_df, operation == "idle")
+idle_pc_plot <- ggplot(this_df, aes(x = device, y = power_pc)) +
+                geom_boxplot() +
+                facet_wrap(~equipment);
+idle_pc_plot
+idle_device_plot <- ggplot(this_df, aes(x = device, y = power_device)) +
+                geom_boxplot() +
+                facet_wrap(~equipment);
+idle_device_plot
+```
+
+do these values follow a normal distribution?
+
+```{r}
+clean_df <- ddply(this_df, c("equipment", "device"), summarize, mean_pc = mean(power_pc), median_pc = median(power_pc), mean_device = mean(power_device), median_device = median(power_device), pvalue_pc = ks.test(power_pc, pnorm, mean(power_pc), sd(power_pc))$p.value, pvalue_device = ks.test(power_device, pnorm, mean(power_device), sd(power_device))$p.value, num=length(power_pc))
+summary(clean_df)
+```
+
+looking at the qqplots, the CUBIE+SSD2 results seem to be normally distributed, but clearly not the PC+HDD1. Having at least one of the datasets not following a normal distribution is already enough to prevent us from using techniques meant for normally distributed variables.
+
+## Comparisons 
+
+does using HDD2 demands less power than using HDD1?
+
+```{r}
+this_subset1 = subset(this_df, equipment == "PC" & device == "HDD1")$power_pc
+this_subset2 = subset(this_df, equipment == "PC" & device == "HDD2")$power_pc
+wilcox.test(this_subset1, this_subset2)
+this_subset1 = subset(this_df, equipment == "PC" & device == "HDD1")$power_device
+this_subset2 = subset(this_df, equipment == "PC" & device == "HDD2")$power_device
+wilcox.test(this_subset1, this_subset2)
+this_subset1 = subset(this_df, equipment == "CUBIE" & device == "HDD1")$power_pc
+this_subset2 = subset(this_df, equipment == "CUBIE" & device == "HDD2")$power_pc
+wilcox.test(this_subset1, this_subset2)
+this_subset1 = subset(this_df, equipment == "CUBIE" & device == "HDD1")$power_device
+this_subset2 = subset(this_df, equipment == "CUBIE" & device == "HDD2")$power_device
+wilcox.test(this_subset1, this_subset2)
+```
+
+yes, it looks the differences are significative
+
+what about SSD1 vs SSD2?
+
+```{r}
+this_subset1 = subset(this_df, equipment == "PC" & device == "SSD1")$power_pc
+this_subset2 = subset(this_df, equipment == "PC" & device == "SSD2")$power_pc
+wilcox.test(this_subset1, this_subset2)
+this_subset1 = subset(this_df, equipment == "PC" & device == "SSD1")$power_device
+this_subset2 = subset(this_df, equipment == "PC" & device == "SSD2")$power_device
+wilcox.test(this_subset1, this_subset2)
+this_subset1 = subset(this_df, equipment == "CUBIE" & device == "SSD1")$power_pc
+this_subset2 = subset(this_df, equipment == "CUBIE" & device == "SSD2")$power_pc
+wilcox.test(this_subset1, this_subset2)
+this_subset1 = subset(this_df, equipment == "CUBIE" & device == "SSD1")$power_device
+this_subset2 = subset(this_df, equipment == "CUBIE" & device == "SSD2")$power_device
+wilcox.test(this_subset1, this_subset2)
+```
+
+all different
+
+What if we compare the same device, but being used in different equipments?
+
+```{r}
+this_subset1 = subset(this_df, equipment == "PC" & device == "HDD1")$power_device
+this_subset2 = subset(this_df, equipment == "CUBIE" & device == "HDD1")$power_device
+wilcox.test(this_subset1, this_subset2)
+this_subset1 = subset(this_df, equipment == "PC" & device == "HDD2")$power_device
+this_subset2 = subset(this_df, equipment == "CUBIE" & device == "HDD2")$power_device
+wilcox.test(this_subset1, this_subset2)
+this_subset1 = subset(this_df, equipment == "PC" & device == "SSD1")$power_device
+this_subset2 = subset(this_df, equipment == "CUBIE" & device == "SSD1")$power_device
+wilcox.test(this_subset1, this_subset2)
+this_subset1 = subset(this_df, equipment == "PC" & device == "SSD2")$power_device
+this_subset2 = subset(this_df, equipment == "CUBIE" & device == "SSD2")$power_device
+wilcox.test(this_subset1, this_subset2)
+```
+
+now all devices for each equipment
+
+```{r}
+library(dunn.test)
+this_subset1 = subset(this_df, equipment == "PC" & device == "HDD1")$power_pc
+this_subset2 = subset(this_df, equipment == "PC" & device == "HDD2")$power_pc
+this_subset3 = subset(this_df, equipment == "PC" & device == "SSD1")$power_pc
+this_subset4 = subset(this_df, equipment == "PC" & device == "SSD2")$power_pc
+dunn.test(list(this_subset1, this_subset2, this_subset3, this_subset4))
+
+this_subset1 = subset(this_df, equipment == "CUBIE" & device == "HDD1")$power_pc
+this_subset2 = subset(this_df, equipment == "CUBIE" & device == "HDD2")$power_pc
+this_subset3 = subset(this_df, equipment == "CUBIE" & device == "SSD1")$power_pc
+this_subset4 = subset(this_df, equipment == "CUBIE" & device == "SSD2")$power_pc
+dunn.test(list(this_subset1, this_subset2, this_subset3, this_subset4))
+```
+
+# Normality tests
+
+##Power (mean for each repetition)
+
+```{r}
+normality_df <- ddply(clean_energy_df, c("equipment", "device", "operation", "reqsize", "cache"), summarize, pvalue = ks.test(power, pnorm, mean(power), sd(power))$p.value, pvalue_device = ks.test(power_device, pnorm, mean(power_device), sd(power_device))$p.value)
+subset(normality_df, pvalue < 0.05)
+subset(normality_df, pvalue_device < 0.05)
+```
+
+We reject the null hypothesis for a single test!!! But still, if we are being rigorous, we cannot say use parametric methods to compare this data
+Regarding the power of the device, we never reject the null hypothesis. Nonetheless, if we qqnorm some of these values (I did for some where p-value is quite low), they do not seem to be normal at all. 
+
+# Does the acess pattern affects power demand?
+
+## Sequential Read vs Write
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, (operation == "read" | operation == "write")), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_power = median(power), median_power_device = median(power_device))
+```
+
+### At the storage device level
+
+```{r}
+read_write_device_plot <- ggplot(this_df, aes(x = operation, y = median_power_device)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + reqsize + cache, ncol=8);
+read_write_device_plot
+```
+
+considering only the storage device, it looks like read demands more power in HDDs, while write demands more power in SSDs
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "reqsize", "cache"), summarize, diff = abs(diff(median_power_device)), relativediff = abs(diff(median_power_device))/min(median_power_device))
+diffs_df
+```
+
+it is only higher than 10% for PC+SSD2.
+
+#### Let's test hypothesis
+
+
+```{r}
+test_read_write_device <- function(frame, equipment_arg, device_arg, reqsize_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & reqsize == reqsize_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, operation == "read")$power_device
+  this_subset2 <- subset(this_subset, operation == "write")$power_device
+  print(wilcox.test(this_subset1, this_subset2))
+}
+equipments=c("PC", "CUBIE")
+devices=c("HDD1", "HDD2", "SSD1", "SSD2")
+reqsizes = c(32, 4096)
+caches= c(0,1)
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(reqsizes))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], reqsizes[r], caches[c]))
+        test_read_write_device(clean_energy_df, equipments[e], devices[d], reqsizes[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+The test cannot conclude these are statistically different (so we'll say they are not):
+- PC+SSD1 32KB requests cache on
+          4MB requests 
+- CUBIE+SSD1 4MB requests, cache off
+- CUBIE+SSD2 4MB requests, cache on
+
+### Now looking at the whole system
+
+```{r}
+read_write_plot <- ggplot(this_df, aes(x = operation, y = median_power)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + reqsize + cache, ncol=8);
+read_write_plot
+```
+
+many cases where read seems to demand more power than write, even with SSDs. A notable exception for PC+SSD2 with 32KB requests, no cache, where write demands more power. That is exactly the situation where write demanded 17% more power than read in the storage device!
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "reqsize", "cache"), summarize, diff = abs(diff(median_power)), relativediff = abs(diff(median_power))/min(median_power))
+diffs_df
+summary(diffs_df)
+```
+
+#### Let's test hypothesis
+
+
+```{r}
+test_read_write <- function(frame, equipment_arg, device_arg, reqsize_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & reqsize == reqsize_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, operation == "read")$power
+  this_subset2 <- subset(this_subset, operation == "write")$power
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(reqsizes))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], reqsizes[r], caches[c]))
+        test_read_write(clean_energy_df, equipments[e], devices[d], reqsizes[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+we can only say they are statistically different for
+- PC+SSD1, (32KB requests, cache) or (4MB requests)
+- PC+SSD2, (32KB requests) or (4MB requests, cache)
+- CUBIE+HDD1
+- CUBIE+HDD2, 32KB requests, no cache
+- CUBIE+SSD1, (32KB requests, cache) or (4MB requests)
+- CUBIE+SSD2, (32KB requests, cache) or (4MB requests)
+
+so we cannot say these are:
+
+- PC+HDD1
+- PC+HDD2
+- PC+SSD1, 32KB requests, no cache
+- PC+SSD2 4MB requests, no cache
+- CUBIE+HDD2 (32KB requests, cache) or (4MB requests)
+- CUBIE+SSD1 32KB requests, no cache
+- CUBIE+SSD2 32KB requests, no cache
+
+### Do a single plot?
+
+Since all different tests are equally represented in ou data, we could simply aggregate them (which means we give the same weight to all of them)
+
+```{r}
+sequential_read_write_power_plot <- ggplot(this_df, aes(x = operation, y = median_power)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+sequential_read_write_power_plot
+```
+```{r}
+sequential_read_write_power_device_plot <- ggplot(this_df, aes(x = operation, y = median_power_device)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+sequential_read_write_power_device_plot
+```
+
+show this data
+```{r}
+coisa <- ddply(this_df, c("equipment", "device", "operation"), summarize, power_device = median(median_power_device))
+```
+
+
+## Random Read vs Write
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, (operation == "randread" | operation == "randwrite")), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_power = median(power), median_power_device = median(power_device))
+```
+
+### storage device level
+
+```{r}
+read_write_device_plot <- ggplot(this_df, aes(x = operation, y = median_power_device)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + reqsize + cache, ncol=8);
+read_write_device_plot
+```
+
+very similar to sequential read vs write, but now with 32KB requests and no cache write always demands more
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "reqsize", "cache"), summarize, diff = abs(diff(median_power_device)), relativediff = abs(diff(median_power_device))/min(median_power_device))
+diffs_df
+summary(diffs_df)
+```
+
+in some cases, specially in the PC, differences are higher (up to 19%)
+
+#### Let's test hypothesis
+
+
+```{r}
+test_rand_read_write_device <- function(frame, equipment_arg, device_arg, reqsize_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & reqsize == reqsize_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, operation == "randread")$power_device
+  this_subset2 <- subset(this_subset, operation == "randwrite")$power_device
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(reqsizes))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], reqsizes[r], caches[c]))
+        test_rand_read_write_device(clean_energy_df, equipments[e], devices[d], reqsizes[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+The test cannot conclude these are statistically different (so we'll say they are not):
+- PC+HDD1 (32KB requests, cache) or (4MB requests, no cache)
+- PC+SSD1 (4MB requests, no cache)
+- CUBIE+SSD2 (4MB requests, no cache)
+
+### Now looking at the whole system
+
+```{r}
+read_write_plot <- ggplot(this_df, aes(x = operation, y = median_power)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + reqsize + cache, ncol=8);
+read_write_plot
+```
+
+
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "reqsize", "cache"), summarize, diff = abs(diff(median_power)), relativediff = abs(diff(median_power))/min(median_power))
+diffs_df
+summary(diffs_df)
+```
+
+#### Let's test hypothesis
+
+
+```{r}
+test_rand_read_write <- function(frame, equipment_arg, device_arg, reqsize_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & reqsize == reqsize_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, operation == "randread")$power
+  this_subset2 <- subset(this_subset, operation == "randwrite")$power
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(reqsizes))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], reqsizes[r], caches[c]))
+        test_rand_read_write(clean_energy_df, equipments[e], devices[d], reqsizes[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+they are statistically different, except:
+
+- PC+HDD2 (32KB requests, no cache) or (4MB requests)
+- PC+SSD2 (4MB requests, no cache)
+- CUBIE+HDD1 (32KB requests, cache)
+- CUBIE+HDD2 (4MB requests)
+- CUBIE+SSD1 (4MB requests, no cache)
+- CUBIE+SSD2 (32KB requests, no cache)
+
+### single plots?
+
+```{r}
+random_read_write_power_plot <- ggplot(this_df, aes(x = operation, y = median_power)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+random_read_write_power_plot
+```
+
+```{r}
+random_read_write_power_device_plot <- ggplot(this_df, aes(x = operation, y = median_power_device)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+random_read_write_power_device_plot
+```
+
+
+```{r}
+coisa <- ddply(this_df, c("equipment", "device", "operation"), summarize, power_device = median(median_power_device))
+```
+
+
+## general read vs write
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, (operation != "idle")), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_power = median(power), median_power_device = median(power_device))
+this_df$operation = ifelse(this_df$operation == "read", "read", 
+                           ifelse(this_df$operation == "write", "write",
+                                  ifelse(this_df$operation == "randread", "read",
+                                        ifelse(this_df$operation == "randwrite", "write", "WTF"))))
+ggplot(this_df, aes(x = operation, y = median_power)) +
+  geom_boxplot() +
+  facet_wrap(~equipment + device, ncol=8);
+```
+
+
+## Sequential vs Random read
+
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, (operation == "read" | operation == "randread")), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_power = median(power), median_power_device = median(power_device))
+```
+
+### summarized plots
+
+```{r}
+read_seq_rand_power_plot <- ggplot(this_df, aes(x = operation, y = median_power)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+read_seq_rand_power_plot
+```
+
+```{r}
+read_seq_rand_power_device_plot <- ggplot(this_df, aes(x = operation, y = median_power_device)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+read_seq_rand_power_device_plot
+```
+
+### At the storage device level
+
+```{r}
+read_seq_rand_device_plot <- ggplot(this_df, aes(x = operation, y = median_power_device)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + reqsize + cache, ncol=8);
+read_seq_rand_device_plot
+```
+
+several tests where the seqeuntial test demands more power than the random one! It seems to happen more for HDDs and with small requests
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "reqsize", "cache"), summarize, diff = abs(diff(median_power_device)), relativediff = abs(diff(median_power_device))/min(median_power_device))
+diffs_df
+summary(diffs_df)
+```
+
+diferença pequena, no máximo 18%, mas menos que 10% na maioria dos testes
+
+#### testing hypothesis
+
+```{r}
+test_read_seq_rand_device <- function(frame, equipment_arg, device_arg, reqsize_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & reqsize == reqsize_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, operation == "read")$power_device
+  this_subset2 <- subset(this_subset, operation == "randread")$power_device
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(reqsizes))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], reqsizes[r], caches[c]))
+        test_read_seq_rand_device(clean_energy_df, equipments[e], devices[d], reqsizes[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+these are NOT statistically different:  
+(0 means no cache)
+
+[1] "PC SSD1 4096 0"
+[1] "CUBIE HDD2 4096 0"
+[1] "CUBIE SSD1 32 0"
+[1] "CUBIE SSD1 4096 0"
+[1] "CUBIE SSD2 32 0"
+[1] "CUBIE SSD2 4096 0"
+
+(in these tests in fact bars are very close to each other)
+
+### now for the whole system
+
+```{r}
+read_seq_rand_plot <- ggplot(this_df, aes(x = operation, y = median_power)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + reqsize + cache, ncol=8);
+read_seq_rand_plot
+```
+
+now we have some situations where random demands more power than sequential, and all of them seem to happen when cache is used
+other situations where sequential demands more than random, as in the storage device, and situations where there is no difference
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "reqsize", "cache"), summarize, diff = abs(diff(median_power)), relativediff = abs(diff(median_power))/min(median_power))
+diffs_df
+summary(diffs_df)
+```
+
+differences go up to 25%, they are higher with small requests than larger ones, but happen to all storage devices
+
+#### testing hypothesis
+
+```{r}
+test_read_seq_rand <- function(frame, equipment_arg, device_arg, reqsize_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & reqsize == reqsize_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, operation == "read")$power
+  this_subset2 <- subset(this_subset, operation == "randread")$power
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(reqsizes))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], reqsizes[r], caches[c]))
+        test_read_seq_rand(clean_energy_df, equipments[e], devices[d], reqsizes[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+differences are not significative to these cases:
+
+[1] "PC HDD2 4096 0"
+[1] "PC HDD2 4096 1"
+[1] "PC SSD1 4096 0"
+[1] "PC SSD2 4096 0"
+[1] "CUBIE HDD2 4096 0"
+[1] "CUBIE SSD1 32 0"
+[1] "CUBIE SSD1 4096 0"
+[1] "CUBIE SSD1 4096 1"
+[1] "CUBIE SSD2 32 0"
+[1] "CUBIE SSD2 4096 0"
+
+and looking at them in the graph, they do not seem to be different.
+
+
+## Sequential vs Random write
+
+
+```{r}
+library(plyr)
+this_df <- ddply(subset(clean_energy_df, (operation == "write" | operation == "randwrite")), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_power = median(power), median_power_device = median(power_device))
+```
+
+### summarized plots
+
+```{r}
+write_seq_rand_power_plot <- ggplot(this_df, aes(x = operation, y = median_power)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+write_seq_rand_power_plot
+```
+
+```{r}
+write_seq_rand_power_device_plot <- ggplot(this_df, aes(x = operation, y = median_power_device)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+write_seq_rand_power_device_plot
+```
+
+### At the storage device level
+
+```{r}
+write_seq_rand_device_plot <- ggplot(this_df, aes(x = operation, y = median_power_device)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + reqsize + cache, ncol=8);
+write_seq_rand_device_plot
+```
+
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "reqsize", "cache"), summarize, diff = abs(diff(median_power_device)), relativediff = abs(diff(median_power_device))/min(median_power_device))
+diffs_df
+summary(diffs_df)
+```
+
+#### testing hypothesis
+
+```{r}
+test_write_seq_rand_device <- function(frame, equipment_arg, device_arg, reqsize_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & reqsize == reqsize_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, operation == "write")$power_device
+  this_subset2 <- subset(this_subset, operation == "randwrite")$power_device
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(reqsizes))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], reqsizes[r], caches[c]))
+        test_write_seq_rand_device(clean_energy_df, equipments[e], devices[d], reqsizes[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+
+statistically different for all HDD tests (except [1] "CUBIE HDD2 4096 0"), not different to practically all SSD tests
+
+### now for the whole system
+
+```{r}
+read_seq_rand_plot <- ggplot(this_df, aes(x = operation, y = median_power)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + reqsize + cache, ncol=8);
+read_seq_rand_plot
+```
+
+now we have some situations where random demands more power than sequential, other situations where sequential demands more than random, as in the storage device, and situations where there is no difference
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "reqsize", "cache"), summarize, diff = abs(diff(median_power)), relativediff = abs(diff(median_power))/min(median_power))
+diffs_df
+summary(diffs_df)
+```
+
+differences go up to 25%, they are higher with small requests than larger ones, but happen to all storage devices
+
+#### testing hypothesis
+
+```{r}
+test_write_seq_rand <- function(frame, equipment_arg, device_arg, reqsize_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & reqsize == reqsize_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, operation == "write")$power
+  this_subset2 <- subset(this_subset, operation == "randwrite")$power
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(reqsizes))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], reqsizes[r], caches[c]))
+        test_write_seq_rand(clean_energy_df, equipments[e], devices[d], reqsizes[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+differences are not significative to these cases:
+
+- all SSD tests with 4MB requests
+[1] "PC HDD2 4096 1"
+[1] "PC SSD1 32 0"
+[1] "CUBIE HDD2 4096 0"
+[1] "CUBIE SSD1 32 0"
+[1] "CUBIE SSD1 32 1"
+[1] "CUBIE SSD2 32 0"
+
+and looking at them in the graph, they do not seem to be different.
+  
+## small vs large reads
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, (operation == "read" | operation == "randread")), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_power = median(power), median_power_device = median(power_device))
+```
+
+### summarized plots
+
+```{r}
+read_small_large_power_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median_power)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+read_small_large_power_plot
+```
+
+it looks like in HDDs there is no difference, but in SSDs large requests demand less power in the PC and more power in the CUBIE.
+
+```{r}
+read_small_large_power_device_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median_power_device)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+read_small_large_power_device_plot
+```
+
+but at the storage device level, it looks large requests always demand more power in SSDs. In HDDs we continue to not see a difference
+
+### At the storage device level
+
+```{r}
+read_small_large_device_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median_power_device)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + operation + cache, ncol=8);
+read_small_large_device_plot
+```
+
+large requests demand more power in most situations, in HDDs it happens specially for random requests.
+
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "operation", "cache"), summarize, diff = abs(diff(median_power_device)), relativediff = abs(diff(median_power_device))/min(median_power_device))
+diffs_df
+summary(diffs_df)
+```
+
+the difference is of 16% for PC SSD1 RANDREAD NO CACHE, 10% for PC SSD1 RANDREAD CACHE, under 10% to all other cases.
+
+#### testing hypothesis
+
+```{r}
+test_read_small_large_device <- function(frame, equipment_arg, device_arg, operation_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & operation == operation_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, reqsize == 32)$power_device
+  this_subset2 <- subset(this_subset, reqsize == 4096)$power_device
+  print(wilcox.test(this_subset1, this_subset2))
+}
+operations = c("read", "randread")
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(operations))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], operations[r], caches[c]))
+        test_read_small_large_device(clean_energy_df, equipments[e], devices[d], operations[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+not different for:
+
+[1] "PC HDD1 read 0"
+[1] "PC HDD1 read 1"
+[1] "PC HDD2 read 0"
+[1] "PC HDD2 read 1"
+[1] "PC SSD1 read 1"
+[1] "PC SSD2 read 1"
+[1] "PC SSD2 randread 1"
+[1] "CUBIE HDD1 read 0"
+[1] "CUBIE HDD1 read 1"
+[1] "CUBIE HDD2 read 0"
+[1] "CUBIE HDD2 read 1"
+[1] "CUBIE SSD1 read 1"
+[1] "CUBIE SSD2 read 1"
+
+in other words, it is statistically different for the two situations with differences over 10%, for all random requests in the HDDs, and for all tests with SSDs except sequential read with cache and random read with cache in PC+SSD2.
+
+### now for the whole system
+
+```{r}
+  read_small_large_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median_power)) +
+                      geom_bar(stat="identity") +
+                      facet_wrap(~equipment + device + operation + cache, ncol=8);
+  read_small_large_plot
+```
+
+here results are different: it looks small requests demand more power than large ones in most tests in the PC, specially with no cache. In the CUBIE, large requests still demand more power in tests with SSDs.
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "operation", "cache"), summarize, diff = abs(diff(median_power)), relativediff = abs(diff(median_power))/min(median_power))
+diffs_df
+summary(diffs_df)
+```
+
+difference goes up to 30% (CUBIE+SSD1 randread cache), 28% for CUBIE+SSD2 randread cache, over 10% for a few cases
+
+#### testing hypothesis
+
+```{r}
+test_read_small_large <- function(frame, equipment_arg, device_arg, operation_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & operation == operation_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, reqsize == 32)$power
+  this_subset2 <- subset(this_subset, reqsize == 4096)$power
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(operations))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], operations[r], caches[c]))
+        test_read_small_large(clean_energy_df, equipments[e], devices[d], operations[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+differences are not significative to these cases:
+
+[1] "PC HDD1 read 1"
+[1] "PC SSD1 read 1"
+[1] "PC SSD1 randread 1"
+[1] "PC SSD2 read 1"
+[1] "CUBIE HDD1 read 0"
+[1] "CUBIE HDD1 read 1"
+[1] "CUBIE HDD2 read 1"
+[1] "CUBIE HDD2 randread 0"
+[1] "CUBIE SSD1 read 1"
+
+so they are significative for all situations with differences over 10%, all tests without cache in the PC, and most tests without cache in the CUBIE (except HDD1 read and HDD2 randread)
+
+## small vs large writes
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, (operation == "write" | operation == "randwrite")), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_power = median(power), median_power_device = median(power_device))
+```
+
+### summarized plots
+
+```{r}
+write_small_large_power_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median_power)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+write_small_large_power_plot
+```
+
+it looks like in HDDs and tests with the CUBIE there is no difference, but using SSDs in the PC small requests demand more power than larger ones.
+
+```{r}
+write_small_large_power_device_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median_power_device)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+write_small_large_power_device_plot
+```
+
+this plot is a mess, it is hard to say anything
+
+### At the storage device level
+
+```{r}
+write_small_large_device_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median_power_device)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + operation + cache, ncol=8);
+write_small_large_device_plot
+```
+
+here we only see a difference for randwrite in HDD2, where large requests demand more power than small ones. In randwrite tests without cache in HDD1, small requests demand more power than large ones. Other situations show little or no difference.
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "operation", "cache"), summarize, diff = abs(diff(median_power_device)), relativediff = abs(diff(median_power_device))/min(median_power_device))
+diffs_df
+summary(diffs_df)
+```
+
+difference is over 10% for the HDD2 randwrite tests only.
+
+#### testing hypothesis
+
+```{r}
+test_write_small_large_device <- function(frame, equipment_arg, device_arg, operation_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & operation == operation_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, reqsize == 32)$power_device
+  this_subset2 <- subset(this_subset, reqsize == 4096)$power_device
+  print(wilcox.test(this_subset1, this_subset2))
+}
+operations = c("write", "randwrite")
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(operations))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], operations[r], caches[c]))
+        test_write_small_large_device(clean_energy_df, equipments[e], devices[d], operations[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+not different for:
+
+[1] "PC HDD1 write 0"
+[1] "PC HDD1 write 1"
+[1] "PC HDD2 write 0"
+[1] "PC SSD1 write 0"
+[1] "PC SSD1 write 1"
+[1] "PC SSD1 randwrite 0"
+[1] "PC SSD1 randwrite 1"
+[1] "PC SSD2 write 1"
+[1] "PC SSD2 randwrite 0"
+[1] "PC SSD2 randwrite 1"
+[1] "CUBIE HDD1 write 0"
+[1] "CUBIE HDD1 write 1"
+[1] "CUBIE HDD1 randwrite 1"
+[1] "CUBIE HDD2 write 1"
+[1] "CUBIE SSD1 write 0"
+[1] "CUBIE SSD1 write 1"
+[1] "CUBIE SSD1 randwrite 1"
+[1] "CUBIE SSD2 write 1"
+[1] "CUBIE SSD2 randwrite 1"
+
+so it is different for the randwrite HDD2 tests (where the difference is over 10%) and for the HDD1 randwrite no cache cases where small requests demanded more power than large ones.
+
+### now for the whole system
+
+```{r}
+write_small_large_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median_power)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + operation + cache, ncol=8);
+write_small_large_plot
+```
+
+here results are different: it looks small requests demand more power than large ones in most tests in the PC, specially with no cache and with SSDs (up to 22%). In the CUBIE, large requests still demand more power in some tests in the CUBIE with HDD2, specially randwrite (11% and 22%). In CUBIE+HDD1 randwrite no cache, small requests demand more power (10%).
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "operation", "cache"), summarize, diff = abs(diff(median_power)), relativediff = abs(diff(median_power))/min(median_power))
+diffs_df
+summary(diffs_df)
+```
+
+#### testing hypothesis
+
+```{r}
+test_write_small_large <- function(frame, equipment_arg, device_arg, operation_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & operation == operation_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, reqsize == 32)$power
+  this_subset2 <- subset(this_subset, reqsize == 4096)$power
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(operations))
+    {
+      for(c in 1:length(caches))
+      {
+        print(paste(equipments[e], devices[d], operations[r], caches[c]))
+        test_write_small_large(clean_energy_df, equipments[e], devices[d], operations[r], caches[c])
+      }
+    }
+  }
+}
+```
+
+differences are not significative to these cases:
+
+[1] "PC HDD1 write 1"
+[1] "PC HDD2 write 1"
+[1] "PC SSD1 write 1"
+[1] "CUBIE HDD1 write 1"
+[1] "CUBIE HDD1 randwrite 1"
+[1] "CUBIE HDD2 write 0"
+[1] "CUBIE HDD2 write 1"
+[1] "CUBIE SSD1 write 0"
+[1] "CUBIE SSD1 write 1"
+[1] "CUBIE SSD1 randwrite 0"
+[1] "CUBIE SSD1 randwrite 1"
+[1] "CUBIE SSD2 write 0"
+[1] "CUBIE SSD2 write 1"
+[1] "CUBIE SSD2 randwrite 0"
+[1] "CUBIE SSD2 randwrite 1"
+
+so they are significative to all situations with difference over 10% we've listed before, and to all situations where we can see a difference in the graph
+
+# effect of using or not the cache
+
+## summarized plots
+
+```{r}
+cache_or_no_cache_power_plot <- ggplot(clean_energy_df, aes(x = as.character(cache), y = median_power)) +
+                                geom_boxplot() +
+                                facet_wrap(~equipment + device, ncol=8);
+cache_or_no_cache_power_plot
+```
+
+it does not seem to make a difference looking at this level, except for CUBIE with SSDs (but it does not seem to make a lot of difference)
+
+```{r}
+cache_or_no_cache_power_device_plot <- ggplot(clean_energy_df, aes(x = as.character(cache), y = median_power_device)) +
+                                geom_boxplot() +
+                                facet_wrap(~equipment + device, ncol=8);
+cache_or_no_cache_power_device_plot
+```
+
+at the storage device it seems to really make no difference. Let's see what we find separating per test.
+
+## read tests
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, (operation == "read" | operation == "randread")), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_power = median(power), median_power_device = median(power_device))
+```
+
+### summarized plots
+
+```{r}
+read_cache_power_plot <- ggplot(this_df, aes(x = as.character(cache), y = median_power)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+read_cache_power_plot
+```
+
+it seems using the cache increases power demand in the CUBIE, specially with HDD2 and SSDs.
+
+```{r}
+read_cache_power_device_plot <- ggplot(this_df, aes(x = as.character(cache), y = median_power_device)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+read_cache_power_device_plot
+```
+
+at the storage device we can't see any differences. Variability is huge, so it looks it really depends on the situation.
+
+### At the storage device level
+
+```{r}
+read_cache_device_plot <- ggplot(this_df, aes(x = as.character(cache), y = median_power_device)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + operation + reqsize, ncol=8);
+read_cache_device_plot
+```
+
+we can't really see differences in most of the tests, except PC SSD1 randread 4096 (9%). Other differences are all under 4%. I can't really see a pattern here.
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "operation", "reqsize"), summarize, diff = abs(diff(median_power_device)), relativediff = abs(diff(median_power_device))/min(median_power_device))
+diffs_df
+summary(diffs_df)
+```
+
+#### testing hypothesis
+
+```{r}
+test_cache_or_no_cache_device <- function(frame, equipment_arg, device_arg, operation_arg, reqsize_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & operation == operation_arg & reqsize == reqsize_arg)
+  this_subset1 <- subset(this_subset, cache == 0)$power_device
+  this_subset2 <- subset(this_subset, cache == 1)$power_device
+  print(wilcox.test(this_subset1, this_subset2))
+}
+operations = c("read", "randread")
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(operations))
+    {
+      for(c in 1:length(reqsizes))
+      {
+        print(paste(equipments[e], devices[d], operations[r], reqsizes[c]))
+        test_cache_or_no_cache_device(clean_energy_df, equipments[e], devices[d], operations[r], reqsizes[c])
+      }
+    }
+  }
+}
+```
+
+only significantly different for:
+
+[1] "PC HDD2 randread 4096"
+[1] "PC SSD1 read 4096"
+[1] "PC SSD1 randread 4096" ** the 9% case
+[1] "PC SSD2 read 32"
+[1] "PC SSD2 read 4096"
+[1] "PC SSD2 randread 4096"
+[1] "CUBIE HDD1 randread 32"
+[1] "CUBIE HDD2 randread 4096"
+[1] "CUBIE SSD1 read 32"
+[1] "CUBIE SSD1 randread 32"
+[1] "CUBIE SSD2 read 32"
+[1] "CUBIE SSD2 read 4096"
+[1] "CUBIE SSD2 randread 32"
+
+### now for the whole system
+
+```{r}
+cache_plot <- ggplot(this_df, aes(x = as.character(cache), y = median_power)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + operation + reqsize, ncol=8);
+cache_plot
+```
+
+here results are different: we see using cache demanding more power than not using it (up to 15% in PC randread 4096, up to 24% in CUBIE with SSDs), except for a few situations where it is the opposite (not using the cache demands more power than using it): all sequential read with small requests tests in the PC (up to 10%). Other situations show no difference between using or not the cache. It seems the difference happens specially when using SSDs (the test with less difference is randread 32). 
+
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "operation", "reqsize"), summarize, diff = abs(diff(median_power)), relativediff = abs(diff(median_power))/min(median_power))
+diffs_df
+summary(diffs_df)
+```
+
+#### testing hypothesis
+
+```{r}
+test_cache_or_no_cache <- function(frame, equipment_arg, device_arg, operation_arg, reqsize_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & operation == operation_arg & reqsize == reqsize_arg)
+  this_subset1 <- subset(this_subset, cache == 0)$power
+  this_subset2 <- subset(this_subset, cache == 1)$power
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(operations))
+    {
+      for(c in 1:length(reqsizes))
+      {
+        print(paste(equipments[e], devices[d], operations[r], reqsizes[c]))
+        test_cache_or_no_cache(clean_energy_df, equipments[e], devices[d], operations[r], reqsizes[c])
+      }
+    }
+  }
+}
+```
+
+differences are not significative to these cases:
+
+[1] "PC HDD1 randread 32"
+[1] "PC HDD2 read 4096"
+[1] "PC HDD2 randread 32"
+[1] "PC HDD2 randread 4096"
+[1] "CUBIE HDD2 read 32"
+[1] "CUBIE HDD2 randread 32"
+[1] "CUBIE HDD2 randread 4096"
+[1] "CUBIE SSD1 randread 32"
+[1] "CUBIE SSD2 randread 32"
+
+so all situations where we've seen a difference in the graph, the difference is significative.
+
+## write tests
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, (operation == "write" | operation == "randwrite")), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_power = median(power), median_power_device = median(power_device))
+```
+
+### summarized plots
+
+```{r}
+write_cache_power_plot <- ggplot(this_df, aes(x = as.character(cache), y = median_power)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+write_cache_power_plot
+```
+
+it seems using the cache increases power demand in the CUBIE, specially with HDD2 and SSDs.
+
+```{r}
+write_cache_power_device_plot <- ggplot(this_df, aes(x = as.character(cache), y = median_power_device)) +
+                                    geom_boxplot() +
+                                    facet_wrap(~equipment + device, ncol=8);
+write_cache_power_device_plot
+```
+
+we can only see differences for SSD1. It seems using the cache increases the power demand of this device in the CUBIE, but decreases it in the PC.
+
+### At the storage device level
+
+```{r}
+write_cache_device_plot <- ggplot(this_df, aes(x = as.character(cache), y = median_power_device)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + operation + reqsize, ncol=8);
+write_cache_device_plot
+```
+
+we can't really see differences in most of the tests, except PC HDD1 randwrite 32KB (5%), CUBIE HDD1 randwrite 32KB (9%), where not using the cache increases power demand. All other differences are of up to 5%.
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "operation", "reqsize"), summarize, diff = diff(median_power_device), relativediff = (max(median_power_device) - min(median_power_device))/min(median_power_device))
+diffs_df
+summary(diffs_df)
+```
+
+#### testing hypothesis
+
+```{r}
+operations = c("write", "randwrite")
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(operations))
+    {
+      for(c in 1:length(reqsizes))
+      {
+        print(paste(equipments[e], devices[d], operations[r], reqsizes[c]))
+        test_cache_or_no_cache_device(clean_energy_df, equipments[e], devices[d], operations[r], reqsizes[c])
+      }
+    }
+  }
+}
+```
+
+only significantly different for:
+
+[1] "PC HDD1 randwrite 32"
+[1] "PC HDD2 write 4096"
+[1] "PC HDD2 randwrite 32"
+[1] "PC SSD2 randwrite 4096"
+[1] "CUBIE HDD1 write 32"
+[1] "CUBIE HDD1 write 4096"
+[1] "CUBIE HDD1 randwrite 32"
+[1] "CUBIE HDD2 write 32"
+[1] "CUBIE HDD2 randwrite 4096"
+[1] "CUBIE SSD1 write 32"
+[1] "CUBIE SSD1 write 4096"
+[1] "CUBIE SSD1 randwrite 32"
+[1] "CUBIE SSD2 write 32"
+
+so the two we've listed are significant.
+
+### now for the whole system
+
+```{r}
+cache_plot <- ggplot(this_df, aes(x = as.character(cache), y = median_power)) +
+                    geom_bar(stat="identity") +
+                    facet_wrap(~equipment + device + operation + reqsize, ncol=8);
+cache_plot
+```
+
+
+in the CUBIE, there is always some small increase in power demand by using the cache (from 4% to 15%). In the PC, it's more or less the same (up to 7%, less than 5% for most cases), except the opposite (not using the cache demands more power) happens for all sequential writes with 32KB requests (HDD1 12%, HDD2 3%, SSD1 16%, SSD2 14%), and for PC+SSD2 randwrite 32KB (7%).
+
+
+```{r}
+diffs_df <- ddply(this_df, c("equipment", "device", "operation", "reqsize"), summarize, diff = (diff(median_power)), relativediff = (max(median_power) - min(median_power))/min(median_power))
+diffs_df
+summary(diffs_df)
+```
+
+#### testing hypothesis
+
+```{r}
+
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(operations))
+    {
+      for(c in 1:length(reqsizes))
+      {
+        print(paste(equipments[e], devices[d], operations[r], reqsizes[c]))
+        test_cache_or_no_cache(clean_energy_df, equipments[e], devices[d], operations[r], reqsizes[c])
+      }
+    }
+  }
+}
+```
+
+differences are not significative to these cases:
+
+[1] "PC HDD2 write 4096"
+[1] "PC HDD2 randwrite 32"
+[1] "PC HDD2 randwrite 4096"
+[1] "CUBIE HDD2 randwrite 32"
+
+and in fact these tests do now show differences in the graph
+
+### let's see some examples
+
+```{r}
+this_subset <- subset(energy_df, equipment == "CUBIE" & device == "HDD1" & operation == "randwrite" & reqsize == 32)
+example_cache_plot <- ggplot(this_subset, aes(x = measurement, y = power_device)) +
+                      geom_point() + 
+                      facet_wrap(~cache + repetition, ncol=5);
+example_cache_plot
+
+this_subset2 <- subset(energy_df, equipment == "CUBIE" & device == "HDD1" & operation == "read" & reqsize == 32)
+example_cache_plot2 <- ggplot(this_subset2, aes(x = measurement, y = power_device)) +
+                      geom_point() + 
+                      facet_wrap(~cache + repetition, ncol=5);
+example_cache_plot2
+```
+
+# the maximum difference between idle and working to each equipment + device
+
+this will  be kind of tricky to calculate
+
+```{r}
+#join the repetitions of each test
+#we'll only use tests without cache here, because we are interested in the impact by the storage device
+cleanest_df <- ddply(subset(clean_energy_df, cache == 0 & operation != "idle"), c("equipment", "device", "operation", "reqsize"), summarize, median = median(power))
+#now to each one we get the maximum of all combinations reqsize + operation
+max_df <- ddply(cleanest_df, c("equipment", "device"), summarize, max = max(median))
+#now we'll combine this information with the idle results (here we use the mean because we are getting the average power demand of a single execution, we don't have multiple repetitions)
+idle_df <- ddply(subset(energy_df, operation == "idle"), c("equipment", "device"), summarize, idle_power = median(power_pc))
+#join them
+idle_df$working_power = 0
+idle_df$equipment = as.character(idle_df$equipment)
+max_df$equipment = as.character(max_df$equipment)
+idle_df$device = as.character(idle_df$device)
+max_df$device = as.character(max_df$device)
+for(i in 1:length(idle_df$idle_power))
+{
+  this_subset = subset(max_df, equipment == idle_df$equipment[i] & device == idle_df$device[i])
+  idle_df$working_power[i] = this_subset$max
+}
+#now we have to change the format to plot
+library(reshape2)
+melted_df <- melt(idle_df, id.vars = c("equipment", "device"))
+idle_to_power <- ggplot(melted_df, aes(x = variable, y = value)) +
+                 geom_bar(stat = "identity") +
+                 geom_text(aes(label = sprintf("%.1f", value))) +
+                 facet_wrap(~equipment + device, ncol=4);
+idle_to_power
+#show the differences:
+idle_df$diff = idle_df$working_power - idle_df$idle_power
+idle_df$relativediff = idle_df$diff / idle_df$idle_power
+
+
+```
+
+lets do the same, but to storage device
+
+```{r}
+#join the repetitions of each test
+#we'll only use tests without cache here, because we are interested in the impact by the storage device
+cleanest_df <- ddply(subset(clean_energy_df, cache == 0 & operation != "idle"), c("equipment", "device", "operation", "reqsize"), summarize, median = median(power_device))
+#now to each one we get the maximum of all combinations reqsize + operation
+max_df <- ddply(cleanest_df, c("equipment", "device"), summarize, max = max(median))
+#now we'll combine this information with the idle results (here we use the mean because we are getting the average power demand of a single execution, we don't have multiple repetitions)
+idle_df <- ddply(subset(energy_df, operation == "idle"), c("equipment", "device"), summarize, idle_power = median(power_device))
+#join them
+idle_df$working_power = 0
+idle_df$equipment = as.character(idle_df$equipment)
+max_df$equipment = as.character(max_df$equipment)
+idle_df$device = as.character(idle_df$device)
+max_df$device = as.character(max_df$device)
+for(i in 1:length(idle_df$idle_power))
+{
+  this_subset = subset(max_df, equipment == idle_df$equipment[i] & device == idle_df$device[i])
+  idle_df$working_power[i] = this_subset$max
+}
+#now we have to change the format to plot
+library(reshape2)
+melted_df <- melt(idle_df, id.vars = c("equipment", "device"))
+idle_to_power2 <- ggplot(melted_df, aes(x = variable, y = value)) +
+                 geom_bar(stat = "identity") +
+                 geom_text(aes(label = sprintf("%.2f",value), y = value)) +
+                 facet_wrap(~equipment + device, ncol=4);
+idle_to_power2
+#show the differences:
+idle_df$diff = idle_df$working_power - idle_df$idle_power
+idle_df$relativediff = idle_df$diff / idle_df$idle_power
+```
+
+are these results statistically different?
+
+```{r}
+#idle vs busy
+test_idle_busy <- function(equipment_arg, device_arg)
+{
+    this_subset1 <- subset(energy_df, operation == "idle" & equipment == equipment_arg & device == device_arg)$power_device
+    this_subset2 <- subset(energy_df, equipment == equipment_arg & device == device_arg & operation == subset(cleanest_df, equipment == equipment_arg & device == device_arg & median == subset(max_df, equipment == equipment_arg & device == device_arg)$max)$operation & reqsize == subset(cleanest_df, equipment == equipment_arg & device == device_arg & median == subset(max_df, equipment == equipment_arg & device == device_arg)$max)$reqsize & cache == 0)$power_device
+    print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+  {
+  for(d in 1:length(devices))
+  {
+    print(paste(equipments[e], devices[d]))
+    test_idle_busy(equipments[e], devices[d])
+  }
+  }
+#all different
+#same device, idle, cubie pc
+test_idle_cubie_pc <- function(device_arg)
+{
+    this_subset1 <- subset(energy_df, operation == "idle" & equipment == "CUBIE" & device == device_arg)$power_device
+    this_subset2 <- subset(energy_df, operation == "idle" & equipment == "PC" & device == device_arg)$power_device
+    print(wilcox.test(this_subset1, this_subset2))
+}
+  for(d in 1:length(devices))
+  {
+    print((devices[d]))
+    test_idle_cubie_pc(devices[d])
+  }
+```
+
+
+# energy efficiency
+
+we'll start by joining the data frames to calculate bytes/joule 
+
+```{r}
+clean_energy_df$bandwidth = 0
+for(i in 1:length(clean_energy_df$power))
+{
+  this_subset <- subset(df, equipment == clean_energy_df$equipment[i] &
+                            device == clean_energy_df$device[i] &
+                            operation == clean_energy_df$operation[i] &
+                            reqsize == clean_energy_df$reqsize[i] &
+                            cache == clean_energy_df$cache[i] &
+                            repetition == clean_energy_df$repetition[i])
+  clean_energy_df$bandwidth[i] = this_subset$bandwidth
+}
+#bytes/sec = bytes/sec/W = bandwidth/power
+clean_energy_df$efficiency = clean_energy_df$bandwidth / clean_energy_df$power
+#numbers are too large, lets make it KB/Joule
+clean_energy_df$efficiency = clean_energy_df$efficiency/1024
+
+test_hdd1_hdd2 <- function(frame, equipment_arg, reqsize_arg, operation_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & reqsize == reqsize_arg & operation == operation_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, device == "HDD1")$efficiency
+  this_subset2 <- subset(this_subset, device == "HDD2")$efficiency
+  print(wilcox.test(this_subset1, this_subset2))
+}
+test_PC_CUBIE <- function(frame, device_arg, reqsize_arg, operation_arg, cache_arg)
+{
+  this_subset <- subset(frame, device == device_arg & reqsize == reqsize_arg & operation == operation_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, equipment == "PC")$efficiency
+  this_subset2 <- subset(this_subset, equipment == "CUBIE")$efficiency
+  print(wilcox.test(this_subset1, this_subset2))
+}
+library(dunn.test)
+test_all <- function(frame, equipment_arg, reqsize_arg, cache_arg, operation_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & reqsize == reqsize_arg & cache == cache_arg & operation == operation_arg) 
+  this_subset1 <- subset(this_subset, device == "HDD1")$efficiency
+  this_subset2 <- subset(this_subset, device == "HDD2")$efficiency
+  this_subset3 <- subset(this_subset, device == "SSD1")$efficiency
+  this_subset4 <- subset(this_subset, device == "SSD2")$efficiency
+  print(dunn.test(list(this_subset1, this_subset2, this_subset3, this_subset4)))
+}
+test_reqsizes <- function(frame, equipment_arg, device_arg, cache_arg, operation_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & cache == cache_arg & operation == operation_arg)
+  this_subset1 <- subset(this_subset, reqsize == 32)$efficiency
+  this_subset2 <- subset(this_subset, reqsize == 4096)$efficiency
+  print(wilcox.test(this_subset1, this_subset2))
+}
+test_alloperations <- function(frame, equipment_arg, device_arg, reqsize_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & reqsize == reqsize_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, operation == "write")$efficiency
+  this_subset2 <- subset(this_subset, operation == "randwrite")$efficiency
+  this_subset3 <- subset(this_subset, operation == "read")$efficiency
+  this_subset4 <- subset(this_subset, operation == "randread")$efficiency
+  print(dunn.test(list(this_subset1, this_subset2, this_subset3, this_subset4)))
+}
+```
+
+## does energy efficiency follow a normal distribution?
+
+```{r}
+normality_df <- ddply(clean_energy_df, c("equipment", "device", "operation", "reqsize", "cache"), summarize, pvalue = ks.test(efficiency, pnorm, mean(efficiency), sd(efficiency))$p.value)
+subset(normality_df, pvalue < 0.05)
+```
+
+three tests do, but others don't, so we cannot use parametric methods.
+
+
+## cache vs no cache
+
+```{r}
+test_efficiency_cache <- function(op_arg, eq_arg, de_arg, re_arg)
+{
+  sub <- subset(clean_energy_df, operation == op_arg & equipment == eq_arg & device == de_arg & reqsize == re_arg)
+  this1 <- subset(sub, cache == 0)$efficiency
+  this2 <- subset(sub, cache == 1)$efficiency
+  print(wilcox.test(this1,this2))
+}
+operations <- c("write", "randwrite")
+for(o in 1:length(operations))
+{
+  for(e in 1:length(equipments))
+  {
+    for(d in 1:length(devices))
+    {
+      for(r in 1:length(reqsizes))
+      {
+        print(paste(operations[o], equipments[e], devices[d], reqsizes[r]))
+        test_efficiency_cache(operations[o], equipments[e], devices[d], reqsizes[r])
+      }
+    }
+  }
+}
+```
+
+all different except:
+
+[1] "write CUBIE SSD2 4096"
+[1] "write CUBIE SSD1 4096"
+[1] "write CUBIE HDD2 4096"
+[1] "randwrite CUBIE SSD2 4096"
+[1] "randwrite CUBIE SSD1 4096"
+[1] "randwrite CUBIE HDD2 4096"
+[1] "write PC SSD2 4096"
+[1] "write PC SSD1 4096"
+[1] "randwrite PC SSD2 4096"
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, operation == "write" | operation == "randwrite"), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_eff = median(efficiency))
+diffs_df <- ddply(this_df, c("equipment", "device", "reqsize", "operation"), summarize, diff = diff(median_eff), relativediff = (max(median_eff) - min(median_eff))/min(median_eff))
+```
+
+## request size comparisons
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, operation == "write" | operation == "randwrite"), c("equipment", "device", "operation", "reqsize", "cache"), summarize, median_eff = median(efficiency))
+diffs_df <- ddply(this_df, c("equipment", "device", "cache", "operation"), summarize, diff = diff(median_eff), relativediff = (max(median_eff) - min(median_eff))/min(median_eff))
+```
+
+
+## no cache, sequential write
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, cache == 0 & operation == "write"), c("equipment", "device", "reqsize"), summarize, median = median(efficiency))
+write_efficiency_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                         geom_bar(stat = "identity") +
+                         geom_text(aes(label = sprintf("%.0f",median), y = median)) +
+                         facet_wrap(~equipment + device, ncol=8);
+write_efficiency_plot
+```
+
+### let's check the comparisons
+
+#### HDD2 has lower energy efficiency than HDD1?
+
+comparisons between pairs
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+    print(paste(equipments[e], reqsizes[r]))
+    test_hdd1_hdd2(clean_energy_df, equipments[e], reqsizes[r], "write", 0)
+  }
+}
+```
+
+all statistically different
+
+#### HDD1 has the same energy efficiency in the PC or in the CUBIE
+
+```{r}
+test_PC_CUBIE <- function(frame, device_arg, reqsize_arg, operation_arg, cache_arg)
+{
+  this_subset <- subset(frame, device == device_arg & reqsize == reqsize_arg & operation == operation_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, equipment == "PC")$efficiency
+  this_subset2 <- subset(this_subset, equipment == "CUBIE")$efficiency
+  print(wilcox.test(this_subset1, this_subset2))
+}
+  
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD1", reqsizes[r], "write", 0)
+}
+```
+
+no, they are statistically different
+
+#### HDD2 has higher efficiency in the CUBIE (than in the PC)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD2", reqsizes[r], "write", 0)
+}
+```
+
+yes, different
+
+#### SSDs have higher energy efficiency in the PC (than in the CUBIE)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD1", reqsizes[r], "write", 0)
+}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD2", reqsizes[r], "write", 0)
+}
+```
+
+yes, they are all different
+
+#### compare all results to each equipment + reqsize
+
+```{r}
+library(dunn.test)
+test_all <- function(frame, equipment_arg, reqsize_arg, cache_arg, operation_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & reqsize == reqsize_arg & cache == cache_arg & operation == operation_arg) 
+  this_subset1 <- subset(this_subset, device == "HDD1")$efficiency
+  this_subset2 <- subset(this_subset, device == "HDD2")$efficiency
+  this_subset3 <- subset(this_subset, device == "SSD1")$efficiency
+  this_subset4 <- subset(this_subset, device == "SSD2")$efficiency
+  print(dunn.test(list(this_subset1, this_subset2, this_subset3, this_subset4)))
+}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+      print(paste(equipments[e], reqsizes[r]))
+      test_all(clean_energy_df, equipments[e], reqsizes[r], 0, "write")
+  }
+}
+```
+
+all different
+
+#### larger requests have higher energy efficiency?
+
+```{r}
+test_reqsizes <- function(frame, equipment_arg, device_arg, cache_arg, operation_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & cache == cache_arg & operation == operation_arg)
+  this_subset1 <- subset(this_subset, reqsize == 32)$efficiency
+  this_subset2 <- subset(this_subset, reqsize == 4096)$efficiency
+  print(wilcox.test(this_subset1, this_subset2))
+}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(devices))
+  {
+      print(paste(equipments[e], devices[r]))
+      test_reqsizes(clean_energy_df, equipments[e], devices[r], 0, "write")
+  }
+}
+```
+
+all different
+
+## no cache, random write
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, cache == 0 & operation == "randwrite"), c("equipment", "device", "reqsize"), summarize, median = median(efficiency))
+rand_write_efficiency_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                         geom_bar(stat = "identity") +
+                         geom_text(aes(label = sprintf("%.0f",median), y = median)) +
+                         facet_wrap(~equipment + device, ncol=8);
+rand_write_efficiency_plot
+```
+
+### let's check the comparisons
+
+#### HDD2 has lower energy efficiency than HDD1?
+
+comparisons between pairs
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+    print(paste(equipments[e], reqsizes[r]))
+    test_hdd1_hdd2(clean_energy_df, equipments[e], reqsizes[r], "randwrite", 0)
+  }
+}
+```
+
+all statistically different, except CUBIE 32
+
+#### HDD1 has the same energy efficiency in the PC or in the CUBIE
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD1", reqsizes[r], "randwrite", 0)
+}
+```
+
+no, they are statistically different
+
+#### HDD2 has higher efficiency in the CUBIE (than in the PC)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD2", reqsizes[r], "randwrite", 0)
+}
+```
+
+yes, different
+
+#### SSDs have higher energy efficiency in the PC (than in the CUBIE)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD1", reqsizes[r], "randwrite", 0)
+}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD2", reqsizes[r], "randwrite", 0)
+}
+```
+
+yes, they are all different
+
+#### compare all results to each equipment + reqsize
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+      print(paste(equipments[e], reqsizes[r]))
+      test_all(clean_energy_df, equipments[e], reqsizes[r], 0, "randwrite")
+  }
+}
+```
+
+all different, except HDD1 and HDD2 in CUBIE, and SSD1 and SSD2 in CUBIE with large requests
+
+#### larger requests have higher energy efficiency?
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(devices))
+  {
+      print(paste(equipments[e], devices[r]))
+      test_reqsizes(clean_energy_df, equipments[e], devices[r], 0, "randwrite")
+  }
+}
+```
+
+all different
+
+## no cache, comparing sequential and random write
+
+```{r}
+write_efficiency_plot
+rand_write_efficiency_plot
+```
+
+looking at the graphs, it seems all are different (random is lower than sequential) except
+- SSD1 in the PC
+- SSD2 in the PC with large requests
+- HDD2 in the CUBIE with large requests
+- SSD1 and SSD2 in the CUBIE
+
+let's see what the tests say later on
+
+## no cache, sequential read
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, cache == 0 & operation == "read"), c("equipment", "device", "reqsize"), summarize, median = median(efficiency))
+read_efficiency_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                         geom_bar(stat = "identity") +
+                         geom_text(aes(label = sprintf("%.0f",median), y = median)) +
+                         facet_wrap(~equipment + device, ncol=8);
+read_efficiency_plot
+```
+
+### let's check the comparisons
+
+#### HDD2 has lower energy efficiency than HDD1?
+
+comparisons between pairs
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+    print(paste(equipments[e], reqsizes[r]))
+    test_hdd1_hdd2(clean_energy_df, equipments[e], reqsizes[r], "read", 0)
+  }
+}
+```
+
+all statistically different
+
+#### HDD1 has the same energy efficiency in the PC or in the CUBIE
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD1", reqsizes[r], "read", 0)
+}
+```
+
+no, they are statistically different
+
+#### HDD2 has higher efficiency in the CUBIE (than in the PC)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD2", reqsizes[r], "read", 0)
+}
+```
+
+yes, different
+
+#### SSDs have higher energy efficiency in the PC (than in the CUBIE)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD1", reqsizes[r], "read", 0)
+}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD2", reqsizes[r], "read", 0)
+}
+```
+
+yes, they are all different
+
+#### compare all results to each equipment + reqsize
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+      print(paste(equipments[e], reqsizes[r]))
+      test_all(clean_energy_df, equipments[e], reqsizes[r], 0, "read")
+  }
+}
+```
+
+all different
+
+#### larger requests have higher energy efficiency?
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(devices))
+  {
+      print(paste(equipments[e], devices[r]))
+      test_reqsizes(clean_energy_df, equipments[e], devices[r], 0, "read")
+  }
+}
+```
+
+all different
+
+## no cache, random read
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, cache == 0 & operation == "randread"), c("equipment", "device", "reqsize"), summarize, median = median(efficiency))
+rand_read_efficiency_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                         geom_bar(stat = "identity") +
+                         geom_text(aes(label = sprintf("%.0f",median), y = median)) +
+                         facet_wrap(~equipment + device, ncol=8);
+rand_read_efficiency_plot
+```
+
+### let's check the comparisons
+
+#### HDD2 has lower energy efficiency than HDD1?
+
+comparisons between pairs
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+    print(paste(equipments[e], reqsizes[r]))
+    test_hdd1_hdd2(clean_energy_df, equipments[e], reqsizes[r], "randread", 0)
+  }
+}
+```
+
+all different, except CUBIE 4096
+
+#### HDD1 has the same energy efficiency in the PC or in the CUBIE
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD1", reqsizes[r], "randread", 0)
+}
+```
+
+no, they are statistically different
+
+#### HDD2 has higher efficiency in the CUBIE (than in the PC)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD2", reqsizes[r], "randread", 0)
+}
+```
+
+yes, different
+
+#### SSDs have higher energy efficiency in the PC (than in the CUBIE)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD1", reqsizes[r], "randread", 0)
+}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD2", reqsizes[r], "randread", 0)
+}
+```
+
+yes, they are all different
+
+#### compare all results to each equipment + reqsize
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+      print(paste(equipments[e], reqsizes[r]))
+      test_all(clean_energy_df, equipments[e], reqsizes[r], 0, "randread")
+  }
+}
+```
+
+all different
+
+#### larger requests have higher energy efficiency?
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(devices))
+  {
+      print(paste(equipments[e], devices[r]))
+      test_reqsizes(clean_energy_df, equipments[e], devices[r], 0, "randread")
+  }
+}
+```
+
+all different
+
+## no cache, comparing sequential and random read
+
+```{r}
+read_efficiency_plot
+rand_read_efficiency_plot
+```
+
+looking at the graphs, it seems all are different (random is lower than sequential) except
+- CUBIE SSD1 4096 (where is seems random is slightly higher than sequential)
+
+the difference does not seem very large for
+- PC SSD1 4096
+- PC SSD2 4096
+- CUBIE SSD2 4096
+
+let's see what the tests say later on
+
+## let's test all differences with no cache 
+
+```{r}
+test_alloperations <- function(frame, equipment_arg, device_arg, reqsize_arg, cache_arg)
+{
+  this_subset <- subset(frame, equipment == equipment_arg & device == device_arg & reqsize == reqsize_arg & cache == cache_arg)
+  this_subset1 <- subset(this_subset, operation == "write")$efficiency
+  this_subset2 <- subset(this_subset, operation == "randwrite")$efficiency
+  this_subset3 <- subset(this_subset, operation == "read")$efficiency
+  this_subset4 <- subset(this_subset, operation == "randread")$efficiency
+  print(dunn.test(list(this_subset1, this_subset2, this_subset3, this_subset4)))
+}
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(reqsizes))
+    {
+        print(paste(equipments[e], devices[d], reqsizes[r]))
+        test_alloperations(clean_energy_df, equipments[e], devices[d], reqsizes[r], 0)
+    }
+  }
+}
+```
+
+these are NOT different:
+
+[1] "PC HDD1 32" write and read
+[1] "PC HDD1 4096" write and read
+[1] "PC HDD2 32" write and read
+[1] "PC SSD1 32" write and randwrite
+[1] "PC SSD1 4096" write and randwrite, read and randread
+[1] "PC SSD2 4096" write and randwrite, read and randread
+[1] "CUBIE HDD2 4096" write and read, randwrite and randread
+[1] "CUBIE SSD1 32" write and randwrite
+[1] "CUBIE SSD1 4096" write and randwrite, read and randread
+[1] "CUBIE SSD2 32" write and randwrite
+[1] "CUBIE SSD2 4096" write and randwrite, read and randread
+
+so there is *NO* difference between write and randwrite in the SSDs (except PC SSD2 32), *NO* difference between read and randread in SSDs with large requests
+
+
+## cache, sequential write
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, cache == 1 & operation == "write"), c("equipment", "device", "reqsize"), summarize, median = median(efficiency))
+write_cache_efficiency_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                         geom_bar(stat = "identity") +
+                         geom_text(aes(label = sprintf("%.0f",median), y = median)) +
+                         facet_wrap(~equipment + device, ncol=8);
+write_cache_efficiency_plot
+```
+
+### let's check the comparisons
+
+#### HDD2 has lower energy efficiency than HDD1?
+
+comparisons between pairs
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+    print(paste(equipments[e], reqsizes[r]))
+    test_hdd1_hdd2(clean_energy_df, equipments[e], reqsizes[r], "write", 1)
+  }
+}
+```
+
+all statistically different
+
+#### HDD1 has the same energy efficiency in the PC or in the CUBIE
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD1", reqsizes[r], "write", 1)
+}
+```
+
+no, they are statistically different
+
+#### HDD2 has higher efficiency in the CUBIE (than in the PC)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD2", reqsizes[r], "write", 1)
+}
+```
+
+yes, different
+
+#### SSDs have higher energy efficiency in the PC (than in the CUBIE)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD1", reqsizes[r], "write", 1)
+}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD2", reqsizes[r], "write", 1)
+}
+```
+
+yes, they are all different
+
+#### compare all results to each equipment + reqsize
+
+```{r}
+
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+      print(paste(equipments[e], reqsizes[r]))
+      test_all(clean_energy_df, equipments[e], reqsizes[r], 1, "write")
+  }
+}
+```
+
+all different, except:
+- SSD1 and SSD2 in the PC with 32
+- SSD1 and SSD2 in the CUBIE with 32 or 4096
+
+#### larger requests have higher energy efficiency?
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(devices))
+  {
+      print(paste(equipments[e], devices[r]))
+      test_reqsizes(clean_energy_df, equipments[e], devices[r], 1, "write")
+  }
+}
+```
+
+all different
+
+## cache, random write
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, cache == 1 & operation == "randwrite"), c("equipment", "device", "reqsize"), summarize, median = median(efficiency))
+rand_write_cache_efficiency_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                         geom_bar(stat = "identity") +
+                         geom_text(aes(label = sprintf("%.0f",median), y = median)) +
+                         facet_wrap(~equipment + device, ncol=8);
+rand_write_cache_efficiency_plot
+```
+
+### let's check the comparisons
+
+#### HDD2 has lower energy efficiency than HDD1?
+
+comparisons between pairs
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+    print(paste(equipments[e], reqsizes[r]))
+    test_hdd1_hdd2(clean_energy_df, equipments[e], reqsizes[r], "randwrite", 1)
+  }
+}
+```
+
+all statistically different
+
+#### HDD1 has the same energy efficiency in the PC or in the CUBIE
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD1", reqsizes[r], "randwrite", 1)
+}
+```
+
+no, they are statistically different
+
+#### HDD2 has lower efficiency in the CUBIE (than in the PC)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD2", reqsizes[r], "randwrite", 1)
+}
+```
+
+yes, different
+
+#### SSDs have higher energy efficiency in the PC (than in the CUBIE)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD1", reqsizes[r], "randwrite", 1)
+}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD2", reqsizes[r], "randwrite", 1)
+}
+```
+
+yes, they are all different
+
+#### compare all results to each equipment + reqsize
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+      print(paste(equipments[e], reqsizes[r]))
+      test_all(clean_energy_df, equipments[e], reqsizes[r], 1, "randwrite")
+  }
+}
+```
+
+all different, except
+
+#### larger requests have higher energy efficiency?
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(devices))
+  {
+      print(paste(equipments[e], devices[r]))
+      test_reqsizes(clean_energy_df, equipments[e], devices[r], 1, "randwrite")
+  }
+}
+```
+
+all different, except CUBIE+SSD1
+
+## cache, comparing sequential and random write
+
+```{r}
+write_cache_efficiency_plot
+rand_write_cache_efficiency_plot
+```
+
+looking at the graphs, it seems all are different (random is lower than sequential) except
+- PC+HDD2, large requests
+- PC+SSD1, large requests
+- CUBIE+SSD1 and CUBIE+SSD2 are quite close
+
+let's see what the tests say later on
+
+## cache, sequential read
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, cache == 1 & operation == "read"), c("equipment", "device", "reqsize"), summarize, median = median(efficiency))
+read_cache_efficiency_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                         geom_bar(stat = "identity") +
+                         geom_text(aes(label = sprintf("%.0f",median), y = median)) +
+                         facet_wrap(~equipment + device, ncol=8);
+read_cache_efficiency_plot
+```
+
+### let's check the comparisons
+
+#### HDD2 has lower energy efficiency than HDD1?
+
+comparisons between pairs
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+    print(paste(equipments[e], reqsizes[r]))
+    test_hdd1_hdd2(clean_energy_df, equipments[e], reqsizes[r], "read", 1)
+  }
+}
+```
+
+all statistically different
+
+#### HDD1 has the same energy efficiency in the PC or in the CUBIE
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD1", reqsizes[r], "read", 1)
+}
+```
+
+no, they are statistically different
+
+#### HDD2 has higher efficiency in the CUBIE (than in the PC)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD2", reqsizes[r], "read", 1)
+}
+```
+
+yes, different
+
+#### SSDs have higher energy efficiency in the PC (than in the CUBIE)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD1", reqsizes[r], "read", 1)
+}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD2", reqsizes[r], "read", 1)
+}
+```
+
+yes, they are all different
+
+#### compare all results to each equipment + reqsize
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+      print(paste(equipments[e], reqsizes[r]))
+      test_all(clean_energy_df, equipments[e], reqsizes[r], 1, "read")
+  }
+}
+```
+
+all different
+
+#### larger requests have higher energy efficiency?
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(devices))
+  {
+      print(paste(equipments[e], devices[r]))
+      test_reqsizes(clean_energy_df, equipments[e], devices[r], 1, "read")
+  }
+}
+```
+
+all different
+
+## cache, random read
+
+```{r}
+this_df <- ddply(subset(clean_energy_df, cache == 1 & operation == "randread"), c("equipment", "device", "reqsize"), summarize, median = median(efficiency))
+rand_read_cache_efficiency_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                         geom_bar(stat = "identity") +
+                         geom_text(aes(label = sprintf("%.0f",median), y = median)) +
+                         facet_wrap(~equipment + device, ncol=8);
+rand_read_cache_efficiency_plot
+```
+
+### let's check the comparisons
+
+#### HDD2 has lower (or higher) energy efficiency than HDD1?
+
+comparisons between pairs
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+    print(paste(equipments[e], reqsizes[r]))
+    test_hdd1_hdd2(clean_energy_df, equipments[e], reqsizes[r], "randread", 1)
+  }
+}
+```
+
+all different, except PC 32 and CUBIE 4096
+
+#### HDD1 has the same energy efficiency in the PC or in the CUBIE
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD1", reqsizes[r], "randread", 1)
+}
+```
+
+no, they are statistically different
+
+#### HDD2 has higher efficiency in the CUBIE (than in the PC)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "HDD2", reqsizes[r], "randread", 1)
+}
+```
+
+yes, different
+
+#### SSDs have higher (or lower) energy efficiency in the PC (than in the CUBIE)
+
+```{r}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD1", reqsizes[r], "randread", 1)
+}
+for(r in 1:length(reqsizes))
+{
+  print(paste(reqsizes[r]))
+  test_PC_CUBIE(clean_energy_df, "SSD2", reqsizes[r], "randread", 1)
+}
+```
+
+yes, they are all different
+
+#### compare all results to each equipment + reqsize
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(reqsizes))
+  {
+      print(paste(equipments[e], reqsizes[r]))
+      test_all(clean_energy_df, equipments[e], reqsizes[r], 1, "randread")
+  }
+}
+```
+
+all different, except HDD1 and HDD2 in PC 32 and in CUBIE 4096
+
+#### larger requests have higher energy efficiency?
+
+```{r}
+for(e in 1:length(equipments))
+{
+  for(r in 1:length(devices))
+  {
+      print(paste(equipments[e], devices[r]))
+      test_reqsizes(clean_energy_df, equipments[e], devices[r], 1, "randread")
+  }
+}
+```
+
+all different
+
+## cache, comparing sequential and random read
+
+```{r}
+read_cache_efficiency_plot
+rand_read_cache_efficiency_plot
+```
+
+looking at the graphs, it seems all are different (random is lower than sequential) except
+- CUBIE SSD1 and SSD2 4096 (where is seems random higher than sequential)
+
+let's see what the tests say later on
+
+## let's test all differences with cache
+
+```{r}
+
+for(e in 1:length(equipments))
+{
+  for(d in 1:length(devices))
+  {
+    for(r in 1:length(reqsizes))
+    {
+        print(paste(equipments[e], devices[d], reqsizes[r]))
+        test_alloperations(clean_energy_df, equipments[e], devices[d], reqsizes[r], 1)
+    }
+  }
+}
+```
+
+these are NOT different:
+
+[1] "PC HDD1 4096", randwrite and read
+[1] "PC HDD2 4096", write and randwrite
+[1] "PC SSD1 32", write and randwrite, randwrite and randread
+[1] "PC SSD1 4096", write and randwrite
+[1] "PC SSD2 4096", write and randwrite
+[1] "CUBIE HDD2 32", write and read
+[1] "CUBIE HDD2 4096", write and read, randwrite and randread
+[1] "CUBIE SSD1 32", write and randwrite
+[1] "CUBIE SSD1 4096" write and randwrite, 
+[1] "CUBIE SSD2 4096", write and randwrite
+
+so there is *NO* difference between write and randwrite in the SSDs (except with small requests in SSD2)
+
+# performance
+
+```{r}
+#numbers are too large, lets use MB/s
+df$bandwidth = (df$bandwidth/1024)/1024
+```
+
+
+## tests
+
+cache different from no cache?
+
+```{r}
+test_performance_cache_nocache <- function(op_arg, eq_arg, de_arg, re_arg)
+{
+  this_sub <- subset(df, operation == op_arg & equipment == eq_arg & device == de_arg & reqsize == re_arg)
+  thisone <- subset(this_sub, cache == 1)$bandwidth
+  thistwo <- subset(this_sub, cache==0)$bandwidth
+  print(wilcox.test(thisone, thistwo))
+}
+operations<- c("read", "randread", "write", "randwrite")
+for(o in 1:length(operations))
+{
+  for(e in 1:length(equipments))
+  {
+    for(d in 1:length(devices))
+    {
+      for(r in 1:length(reqsizes))
+      {
+        print(paste(operations[o], equipments[e], devices[d], reqsizes[r]))
+        test_performance_cache_nocache(operations[o], equipments[e], devices[d], reqsizes[r])
+      }
+    }
+  }
+}
+```
+
+all different, except 
+[1] "randwrite PC SSD2 4096"
+[1] "write PC SSD2 4096"
+[1] "randread PC HDD1 32"
+[1] "read CUBIE HDD1 4096"
+
+## all
+
+```{r}
+clean_performance <- ddply(df, c("equipment", "device", "operation", "reqsize", "cache"), summarize, median = median(bandwidth))
+
+all_performance_plot <- ggplot(subset(clean_performance, operation == "write" | operation == "read"), aes(x = reqsize, y = median)) +
+                        geom_bar(stat="identity") +
+                        facet_wrap(~equipment + device + operation + cache, ncol=8);
+all_performance_plot
+```
+
+
+## no cache, sequential write
+
+```{r}
+this_df <- ddply(subset(df, cache == 0 & operation == "write"), c("equipment", "device", "reqsize"), summarize, median = median(bandwidth))
+
+write_performance_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                          geom_bar(stat = "identity") +
+                          geom_text(aes(label = sprintf("%.2f", median), y = median)) +
+                          facet_wrap(~equipment + device, ncol=8);
+write_performance_plot
+```
+
+## no cache, random write
+
+```{r}
+this_df <- ddply(subset(df, cache == 0 & operation == "randwrite"), c("equipment", "device", "reqsize"), summarize, median = median(bandwidth))
+
+rand_write_performance_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                          geom_bar(stat = "identity") +
+                          geom_text(aes(label = sprintf("%.2f", median), y = median)) +
+                          facet_wrap(~equipment + device, ncol=8);
+rand_write_performance_plot
+```
+
+## no cache, sequential read
+
+```{r}
+this_df <- ddply(subset(df, cache == 0 & operation == "read"), c("equipment", "device", "reqsize"), summarize, median = median(bandwidth))
+
+read_performance_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                          geom_bar(stat = "identity") +
+                          geom_text(aes(label = sprintf("%.2f", median), y = median)) +
+                          facet_wrap(~equipment + device, ncol=8);
+read_performance_plot
+```
+
+## no cache, random read
+
+```{r}
+this_df <- ddply(subset(df, cache == 0 & operation == "randread"), c("equipment", "device", "reqsize"), summarize, median = median(bandwidth))
+
+rand_read_performance_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                          geom_bar(stat = "identity") +
+                          geom_text(aes(label = sprintf("%.2f", median), y = median)) +
+                          facet_wrap(~equipment + device, ncol=8);
+rand_read_performance_plot
+```
+
+## cache, sequential write
+
+```{r}
+this_df <- ddply(subset(df, cache == 1 & operation == "write"), c("equipment", "device", "reqsize"), summarize, median = median(bandwidth))
+
+write_cache_performance_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                          geom_bar(stat = "identity") +
+                          geom_text(aes(label = sprintf("%.2f", median), y = median)) +
+                          facet_wrap(~equipment + device, ncol=8);
+write_cache_performance_plot
+```
+
+## cache, random write
+
+```{r}
+this_df <- ddply(subset(df, cache == 1 & operation == "randwrite"), c("equipment", "device", "reqsize"), summarize, median = median(bandwidth))
+
+rand_write_cache_performance_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                          geom_bar(stat = "identity") +
+                          geom_text(aes(label = sprintf("%.2f", median), y = median)) +
+                          facet_wrap(~equipment + device, ncol=8);
+rand_write_cache_performance_plot
+```
+
+## cache, sequential read
+
+```{r}
+this_df <- ddply(subset(df, cache == 1 & operation == "read"), c("equipment", "device", "reqsize"), summarize, median = median(bandwidth))
+
+read_cache_performance_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                          geom_bar(stat = "identity") +
+                          geom_text(aes(label = sprintf("%.2f", median), y = median)) +
+                          facet_wrap(~equipment + device, ncol=8);
+read_cache_performance_plot
+```
+
+## cache, random read
+
+```{r}
+this_df <- ddply(subset(df, cache == 1 & operation == "randread"), c("equipment", "device", "reqsize"), summarize, median = median(bandwidth))
+
+rand_read_cache_performance_plot <- ggplot(this_df, aes(x = as.character(reqsize), y = median)) +
+                          geom_bar(stat = "identity") +
+                          geom_text(aes(label = sprintf("%.2f", median), y = median)) +
+                          facet_wrap(~equipment + device, ncol=8);
+rand_read_cache_performance_plot
+```
+
+
+# just looking at some numbers
+
+what happens in random write with cache?
+```{r}
+coisa <-subset(clean_energy_df, operation == "randwrite" & cache == 1 & (device == "HDD1" | device == "HDD2"))
+coisa <- ddply(coisa, c("equipment", "device", "reqsize"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+
+coisa <-subset(clean_energy_df, operation == "randwrite" & cache == 1 & (device == "SSD1" | device == "SSD2"))
+coisa <- ddply(coisa, c("equipment", "device", "reqsize"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+```
+
+sequential write with cache?
+
+```{r}
+coisa <-subset(clean_energy_df, operation == "write" & cache == 1 )
+coisa <- ddply(coisa, c("equipment", "device", "reqsize"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+```
+
+comparing sequential and random write to HDDs
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "write" | operation == "randwrite") & (device == "HDD1" | device == "HDD2") )
+coisa <- ddply(coisa, c("equipment", "device", "cache", "reqsize", "operation"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+diffs_df <- ddply(coisa, c("equipment", "device", "cache", "reqsize"), summarize, diff = diff(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+comparing sequential and random write to SSDs
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "write" | operation == "randwrite") & (device == "SSD1" | device == "SSD2") )
+coisa <- ddply(coisa, c("equipment", "device", "cache", "reqsize", "operation"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+diffs_df <- ddply(coisa, c("equipment", "device", "cache", "reqsize"), summarize, diff = diff(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+SSDs vs HDDs for write experiemns
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "write" | operation == "randwrite"))
+coisa <- ddply(coisa, c("equipment", "operation", "cache", "reqsize", "device"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("equipment", "operation", "cache", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+ HDD1 vs hdd2
+ 
+```{r}
+coisa <-subset(clean_energy_df, (operation == "write" | operation == "randwrite") & (device == "HDD1" | device == "HDD2"))
+coisa <- ddply(coisa, c("equipment", "operation", "cache", "reqsize", "device"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("equipment", "operation", "cache", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+ssd1 vs ssd2
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "write" | operation == "randwrite") & (device == "SSD1" | device == "SSD2"))
+coisa <- ddply(coisa, c("equipment", "operation", "cache", "reqsize", "device"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("equipment", "operation", "cache", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+cubie vs pc nos ssds
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "write" | operation == "randwrite") & (device == "SSD1" | device == "SSD2"))
+coisa <- ddply(coisa, c("device", "operation", "cache", "reqsize", "equipment"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("device", "operation", "cache", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+cubie vs pc nos hdds
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "write" | operation == "randwrite") & (device == "HDD1" | device == "HDD2"))
+coisa <- ddply(coisa, c("device", "operation", "cache", "reqsize", "equipment"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("device", "operation", "cache", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+reqsize in read experiments
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "read" | operation == "randread") & cache == 0)
+coisa <- ddply(coisa, c("equipment", "device", "operation", "reqsize"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("equipment", "device", "operation"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+seq vs rand in read experiments
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "read" | operation == "randread") & cache == 0)
+coisa <- ddply(coisa, c("equipment", "device", "reqsize", "operation"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("equipment", "device", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+SSDs vs HDDs for reads
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "read" | operation == "randread") & cache == 0)
+coisa <- ddply(coisa, c("equipment", "operation", "reqsize", "device"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("equipment", "operation", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+hdd1 vs hdd2 for reads
+```{r}
+coisa <-subset(clean_energy_df, (operation == "read" | operation == "randread") & cache == 0 & (device == "HDD1" | device == "HDD2"))
+coisa <- ddply(coisa, c("equipment", "operation", "reqsize", "device"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("equipment", "operation", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+ssd1 vs ssd2 for reads
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "read" | operation == "randread") & cache == 0 & (device == "SSD1" | device == "SSD2"))
+coisa <- ddply(coisa, c("equipment", "operation", "reqsize", "device"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("equipment", "operation", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+cubie vs pc for hdds
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "read" | operation == "randread") & cache == 0 & (device == "HDD1" | device == "HDD2"))
+coisa <- ddply(coisa, c("device", "operation", "reqsize", "equipment"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("device", "operation", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+cubie vs pc for ssds
+
+```{r}
+coisa <-subset(clean_energy_df, (operation == "read" | operation == "randread") & cache == 0 & (device == "SSD1" | device == "SSD2"))
+coisa <- ddply(coisa, c("device", "operation", "reqsize", "equipment"), summarize, power = median(median_power), perf = median(bandwidth), eff = median(efficiency))
+coisa$perf = coisa$perf / 1024 /1024
+
+
+diffs_df <- ddply(coisa, c("device", "operation", "reqsize"), summarize, diff = max(eff) - min(eff), relativediff = (max(eff) - min(eff))/min(eff))
+diffs_df$relativediff = diffs_df$relativediff * 100
+```
+
+## all power results (to compare with experimento3)
+
+```{r}
+coisa <- subset(clean_energy_df, reqsize == 32 & equipment == "PC" & (device == "HDD1" | device == "SSD1") & ((operation != "read" & operation != "randread") | cache == 0)) 
+coisa <- ddply(coisa, c("equipment", "device", "operation", "reqsize", "cache"), summarize, nume = length(repetition), med_power = median(power))
+
+ggplot(coisa, aes(x = cache, y = med_power)) + geom_bar(stat="identity") + geom_text(aes(y = med_power, label=sprintf("%.1f", med_power))) + facet_wrap(~device + operation);
+```
+
+## execution time of all tests
+
+```{r}
+df <- subset(df, (operation != "read" & operation != "randread") | cache == 0)
+this_df <- ddply(df, c("equipment", "device", "operation", "reqsize", "cache"), summarize, data = median(dataamount), time = median(tempo))
+```
+
+## power demand of all tests
+
+```{r}
+clean_energy_df <- subset(clean_energy_df, (operation != "read" & operation != "randread") | cache == 0)
+this_df <- ddply(clean_energy_df, c("equipment", "device", "operation", "reqsize", "cache"), summarize, power_system = median(power))
+```
+
