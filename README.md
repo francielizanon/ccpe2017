@@ -1,16 +1,28 @@
-# ccpe2017
+# "Energy Efficiency and I/O Performance of Low-Power Architectures"
 
-Source codes and results of the "Energy Efficiency and I/O Performance of Low-Power Architectures"
+This repository contains additional material for our paper, including all results and source codes.
 
 Authors: Pablo Pavan, Ricardo Lorenzoni, Vinicius Machado, Jean Bez, Edson Padoin, Francieli Boito, Philippe Navaux and Jean-François Méhaut
 Regional University of the Northest of Rio Grande do Sul (Brazil)
 Federal University of Rio Grande do Sul (Brazil)
 Federal University of Santa Catarina (Brazil)
-Grenoble Alpes University (France)
+University of Grenoble Alpes (France)
 
 ## Execution time and amount of data read/written for all experiments
 
 The tables with all these results can be seen in the file tables.pdf
+
+### Main contribution and findings
+
+We presented a comprehensive analysis of energy efficiency and I/O performance comparing low-power architectures to traditional servers. Adding
+on previously obtained results, we provided guidelines to be used when considering the adoption of low-power storage
+servers. Our main findings were:
+
+- Despite the fact the power demand of the storage device amounts for a small fraction of the power demand of the whole system, significant increases in power demand are observed when accessing the storage device.
+- Workload parameters, such as request size and spatiality, impacted power demand in up to 23%.
+- In many cases, higher I/O performance meant higher power demanded by the system.
+- Energy efficiency is affected by workloads (in up to 2836%) mainly because they also affect performance.
+- More sophisticated low-power architectures, with more recent processors and higher processing speed, are not necessarily more attractive to work as storage servers — unless their transfer buses and RAM memory are improved as well.
 
 ## Summary
 
