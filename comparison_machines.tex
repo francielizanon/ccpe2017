@@ -1,0 +1,42 @@
+\documentclass{article}
+\usepackage{xspace}
+\usepackage{multirow}
+\usepackage{subfigure}
+\usepackage{xspace}
+\usepackage{xcolor}
+\usepackage{xargs}
+\usepackage[bottom]{footmisc}
+\usepackage[colorinlistoftodos,prependcaption,textsize=small]{todonotes}
+\usepackage[colorlinks,bookmarksopen,bookmarksnumbered,citecolor=black,urlcolor=black]{hyperref}
+\usepackage{booktabs}
+\newcommand{\pc}{PC\xspace}
+\newcommand{\cubie}{MPSoC\xspace}
+\begin{document}
+The operating system installed in both environments is GNU/Linux - Ubuntu with kernel $3.16.0$-$38$ in the \pc, and Debian with kernel $3.4.106$ in the \cubie. The file system \textit{ext4} was used to access all storage devices. Table~\ref{tab:conf_equip} details the main characteristics of both environments.
+
+\begin{table}[!h]
+\renewcommand{\arraystretch}{1.3}
+\footnotesize
+\caption{Configuration of the experimental environments}
+\label{tab:conf_equip}
+\centering
+ \resizebox{.8\columnwidth}{!}{
+\begin{tabular}{l|c|c}
+%  \hline
+   {\bf                     		  }            & \textbf{\pc}       	  	  & \textbf{\cubie} 		   	                \\\hline\hline
+   {\bf Processor                  	  }            & Intel Core-I7            & ARM Cortex A7	                \\
+   {\bf Processor model                 }            & $4790$         & AllWinnerTech SoC A20           \\
+   {\bf Technique of Manufacture (nm)	  }            & $22$             & $40$                              \\     
+   {\bf Clock frequency                   }            & $3.6$~GHz           & $960$~MHz                          \\
+   {\bf Cores/Processor (\#)              }            & $4$ (with Hyper-Threading)                & $2$                               \\
+\hline
+   {\bf L1 cache/Core (KB)                }            & $64$ x $2$            & $64$                              \\
+   {\bf L2 cache/Core (KB)                }            & $256$ x $4$              & $1024$                            \\
+   {\bf Cache L3 shared (MB)             }            &   $8$          & -                               \\
+   {\bf Memory (GB)	                  }            & $16$ (DDR3)          & $2$  (low-power DDR3)                       
+																							           \\\hline   
+\end{tabular}
+}
+\end{table}
+
+\end{document}
