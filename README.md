@@ -3,9 +3,13 @@
 This repository contains additional material for our paper, including all results and source codes.
 
 Authors: Pablo Pavan, Ricardo Lorenzoni, Vinicius Machado, Jean Bez, Edson Padoin, Francieli Boito, Philippe Navaux and Jean-François Méhaut
+
 Regional University of the Northest of Rio Grande do Sul (Brazil)
+
 Federal University of Rio Grande do Sul (Brazil)
+
 Federal University of Santa Catarina (Brazil)
+
 University of Grenoble Alpes (France)
 
 ## Execution time and amount of data read/written for all experiments
